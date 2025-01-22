@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Support Tickets</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .autocomplete-list {
+            display: none;
+            position: absolute;
+            width: 100%;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 0.375rem 0.375rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .autocomplete-list.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+
+        .autocomplete-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .autocomplete-item.selected {
+            background-color: #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- En-tête avec utilisateur connecté -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold">Support Tickets</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-600">
+                    Connecté en tant que: <strong><%= username %></strong>
+                </span>
+                <a href="/logout" class="text-red-500 hover:text-red-700">
+                    Déconnexion
+                </a>
+            </div>
+        </div>
+        
+        <!-- Formulaire de création -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-semibold mb-4">Nouveau Ticket</h2>
+            <form action="/api/tickets" method="POST" class="space-y-4">
+                <div class="flex items-center gap-2 mb-4">
+                    <input type="checkbox" 
+                           id="isGLPI" 
+                           name="isGLPI" 
+                           value="true"
+                           class="rounded"
+                           onchange="toggleGLPIFields(this)">
+                    <label for="isGLPI" class="text-sm font-medium">
+                        Ticket GLPI
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1">Appelant</label>
+                    <div class="relative">
+                        <input type="text" 
+                               name="caller" 
+                               required 
+                               list="callers"
+                               class="w-full p-2 border rounded">
+                    </div>
+                </div>
+
+                <div class="non-glpi-field">
+                    <label class="block text-sm font-medium mb-1">Raison</label>
+                    <div class="relative">
+                        <input type="text" 
+                               name="reason" 
+                               class="w-full p-2 border rounded">
+                    </div>
+                </div>
+
+                <div class="non-glpi-field">
+                    <label class="block text-sm font-medium mb-1">Tags</label>
+                    <input type="text" 
+                           name="tags" 
+                           placeholder="Séparez les tags par des virgules"
+                           class="w-full p-2 border rounded">
+                </div>
+
+                <button type="submit" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Créer le ticket
+                </button>
+            </form>
+        </div>
+
+        <!-- Bouton pour afficher/masquer les champs mémorisés -->
+        <div class="text-right mb-4">
+            <button onclick="toggleSavedFields()" 
+                    class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center gap-2 ml-auto">
+                <span id="savedFieldsButtonText">Afficher les champs mémorisés</span>
+                <svg id="savedFieldsIcon" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Champs mémorisés (caché par défaut) -->
+        <div id="savedFieldsSection" class="bg-white p-6 rounded-lg shadow-md mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4">Champs mémorisés</h2>
+            
+            <!-- Appelants mémorisés -->
+            <div class="mb-6">
+                <h3 class="font-medium mb-2">Appelants</h3>
+                <div class="flex flex-wrap gap-2">
+                    <% savedFields.callers.forEach(caller => { %>
+                        <div class="flex items-center bg-gray-100 px-3 py-1 rounded">
+                            <span class="mr-2"><%= caller %></span>
+                            <form action="/api/saved-fields/delete" method="POST" class="inline">
+                                <input type="hidden" name="field" value="caller">
+                                <input type="hidden" name="value" value="<%= caller %>">
+                                <button type="submit" class="text-red-500 hover:text-red-700">×</button>
+                            </form>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+
+            <!-- Raisons mémorisées -->
+            <div>
+                <h3 class="font-medium mb-2">Raisons</h3>
+                <div class="flex flex-wrap gap-2">
+                    <% savedFields.reasons.forEach(reason => { %>
+                        <div class="flex items-center bg-gray-100 px-3 py-1 rounded">
+                            <span class="mr-2"><%= reason %></span>
+                            <form action="/api/saved-fields/delete" method="POST" class="inline">
+                                <input type="hidden" name="field" value="reason">
+                                <input type="hidden" name="value" value="<%= reason %>">
+                                <button type="submit" class="text-red-500 hover:text-red-700">×</button>
+                            </form>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+        <!-- Liste des tickets -->
+        <div class="space-y-4">
+            <% tickets.forEach(ticket => { %>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-semibold"><%= ticket.caller %></h3>
+                                <% if (ticket.isGLPI) { %>
+                                    <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                                        GLPI
+                                    </span>
+                                <% } %>
+                            </div>
+                            <% if (!ticket.isGLPI) { %>
+                                <p class="text-gray-600"><%= ticket.reason %></p>
+                                <div class="flex gap-2 mt-2">
+                                    <% ticket.tags.forEach(tag => { %>
+                                        <span class="bg-gray-200 px-2 py-1 rounded text-sm">
+                                            <%= tag %>
+                                        </span>
+                                    <% }) %>
+                                </div>
+                            <% } %>
+                            <p class="text-sm text-gray-500 mt-2">
+                                Créé le <%= new Date(ticket.createdAt).toLocaleString() %>
+                                par <%= ticket.createdBy %>
+                                <% if (ticket.lastModifiedBy) { %>
+                                    <br>
+                                    Modifié le <%= new Date(ticket.lastModifiedAt).toLocaleString() %>
+                                    par <%= ticket.lastModifiedBy %>
+                                <% } %>
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <% if (!ticket.isGLPI) { %>
+                                <a href="/ticket/<%= ticket.id %>" 
+                                   class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                    Voir détails
+                                </a>
+                            <% } %>
+                            <a href="/ticket/<%= ticket.id %>/edit" 
+                               class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                Modifier
+                            </a>
+                            <form action="/api/tickets/<%= ticket.id %>/delete" 
+                                  method="POST"
+                                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce ticket ?')">
+                                <button type="submit"
+                                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                                    Supprimer
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <script>
+        // Fonction pour basculer l'affichage des champs mémorisés
+        function toggleSavedFields() {
+            const section = document.getElementById('savedFieldsSection');
+            const icon = document.getElementById('savedFieldsIcon');
+            const buttonText = document.getElementById('savedFieldsButtonText');
+            
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+                buttonText.textContent = 'Masquer les champs mémorisés';
+            } else {
+                section.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+                buttonText.textContent = 'Afficher les champs mémorisés';
+            }
+        }
+
+        // Amélioration de l'autocomplétion
+        class Autocomplete {
+            constructor(input, items) {
+                this.input = input;
+                this.items = items;
+                this.currentFocus = -1;
+                this.setup();
+            }
+
+            setup() {
+                this.list = document.createElement('div');
+                this.list.classList.add('autocomplete-list');
+                this.input.parentNode.appendChild(this.list);
+
+                this.input.addEventListener('input', () => this.updateList());
+                this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
+                this.input.addEventListener('focus', () => this.updateList());
+                document.addEventListener('click', (e) => {
+                    if (!this.input.contains(e.target)) {
+                        this.list.classList.remove('show');
+                    }
+                });
+            }
+
+            updateList() {
+                const value = this.input.value.toLowerCase();
+                this.currentFocus = -1;
+                this.list.innerHTML = '';
+
+                if (!value) {
+                    this.list.classList.remove('show');
+                    return;
+                }
+
+                const matchingItems = this.items.filter(item =>
+                    item.toLowerCase().includes(value)
+                );
+
+                if (matchingItems.length) {
+                    this.list.classList.add('show');
+                    matchingItems.forEach(item => {
+                        const div = document.createElement('div');
+                        div.classList.add('autocomplete-item');
+                        const index = item.toLowerCase().indexOf(value);
+                        div.innerHTML = item.slice(0, index) +
+                            `<strong>${item.slice(index, index + value.length)}</strong>` +
+                            item.slice(index + value.length);
+                        div.addEventListener('click', () => {
+                            this.input.value = item;
+                            this.list.classList.remove('show');
+                        });
+                        this.list.appendChild(div);
+                    });
+                } else {
+                    this.list.classList.remove('show');
+                }
+            }
+
+            handleKeydown(e) {
+                const items = this.list.getElementsByTagName('div');
+                if (!items.length) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.currentFocus++;
+                    if (this.currentFocus >= items.length) this.currentFocus = 0;
+                    this.setActive(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.currentFocus--;
+                    if (this.currentFocus < 0) this.currentFocus = items.length - 1;
+                    this.setActive(items);
+                } else if (e.key === 'Enter' && this.currentFocus > -1) {
+                    e.preventDefault();
+                    items[this.currentFocus].click();
+                }
+            }
+
+            setActive(items) {
+                Array.from(items).forEach(item => item.classList.remove('selected'));
+                if (this.currentFocus > -1) {
+                    items[this.currentFocus].classList.add('selected');
+                    items[this.currentFocus].scrollIntoView({ block: 'nearest' });
+                }
+            }
+        }
+
+        // Initialisation de l'autocomplétion
+        window.onload = function() {
+            const callerInput = document.querySelector('input[name="caller"]');
+            const reasonInput = document.querySelector('input[name="reason"]');
+            
+            new Autocomplete(callerInput, <%- JSON.stringify(savedFields.callers) %>);
+            new Autocomplete(reasonInput, <%- JSON.stringify(savedFields.reasons) %>);
+        };
+
+        // Fonction pour les champs GLPI
+        function toggleGLPIFields(checkbox) {
+            const nonGLPIFields = document.querySelectorAll('.non-glpi-field');
+            nonGLPIFields.forEach(field => {
+                const inputs = field.querySelectorAll('input');
+                if (checkbox.checked) {
+                    field.style.display = 'none';
+                    inputs.forEach(input => input.required = false);
+                } else {
+                    field.style.display = 'block';
+                    inputs.forEach(input => input.required = true);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
