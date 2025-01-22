@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const Excel = require('exceljs');
 
 const app = express();
 const port = 3000;
@@ -22,7 +23,7 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Configuration de Multer pour les uploads
+// Configuration de Multer
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, UPLOADS_DIR),
     filename: (req, file, cb) => {
@@ -62,7 +63,7 @@ const initialData = {
     }
 };
 
-// Initialisation
+// Fonctions utilitaires
 async function initializeApp() {
     try {
         await fs.mkdir(path.join(__dirname, 'data'), { recursive: true });
@@ -96,6 +97,100 @@ async function writeData(data) {
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
+// Fonction Stats
+function processStats(tickets) {
+    const now = new Date();
+    const stats = {
+        day: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
+        week: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
+        month: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
+        glpiTotal: 0,
+        nonGlpiTotal: 0,
+        topCallers: [],
+        topTags: []
+    };
+
+    // Préparation des périodes
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date(now - i * 24 * 60 * 60 * 1000);
+        stats.day.labels.push(date.toLocaleDateString());
+        stats.day.data.push(0);
+        stats.day.glpiData.push(0);
+    }
+
+    for (let i = 3; i >= 0; i--) {
+        const weekStart = new Date(now - (i * 7 + 6) * 24 * 60 * 60 * 1000);
+        const weekEnd = new Date(now - i * 7 * 24 * 60 * 60 * 1000);
+        stats.week.labels.push(`${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`);
+        stats.week.data.push(0);
+        stats.week.glpiData.push(0);
+    }
+
+    for (let i = 11; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        stats.month.labels.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
+        stats.month.data.push(0);
+        stats.month.glpiData.push(0);
+    }
+
+    // Analyse des tickets
+    const callerStats = {};
+    const tagStats = {};
+    
+    tickets.forEach(ticket => {
+        const date = new Date(ticket.createdAt);
+        const dayDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        const monthDiff = (now.getMonth() - date.getMonth()) + (now.getFullYear() - date.getFullYear()) * 12;
+
+        if (dayDiff < 30) {
+            stats.day.data[29 - dayDiff]++;
+            if (ticket.isGLPI) stats.day.glpiData[29 - dayDiff]++;
+        }
+
+        if (dayDiff < 28) {
+            const weekIndex = Math.floor(dayDiff / 7);
+            if (weekIndex < 4) {
+                stats.week.data[3 - weekIndex]++;
+                if (ticket.isGLPI) stats.week.glpiData[3 - weekIndex]++;
+            }
+        }
+
+        if (monthDiff < 12) {
+            stats.month.data[11 - monthDiff]++;
+            if (ticket.isGLPI) stats.month.glpiData[11 - monthDiff]++;
+        }
+
+        if (ticket.isGLPI) {
+            stats.glpiTotal++;
+        } else {
+            stats.nonGlpiTotal++;
+            if (ticket.tags) {
+                ticket.tags.forEach(tag => {
+                    tagStats[tag] = (tagStats[tag] || 0) + 1;
+                });
+            }
+        }
+
+        callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
+    });
+
+    stats.topCallers = Object.entries(callerStats)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    stats.topTags = Object.entries(tagStats)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    ['day', 'week', 'month'].forEach(period => {
+        stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
+        stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
+    });
+
+    return stats;
+}
 // Routes d'authentification
 app.get('/login', (req, res) => {
     res.render('login');
@@ -132,6 +227,65 @@ app.get('/', requireLogin, async (req, res) => {
     }
 });
 
+// Routes des statistiques
+app.get('/stats', async (req, res) => {
+    try {
+        const data = await readData();
+        const stats = processStats(data.tickets);
+        res.render('stats', { stats });
+    } catch (error) {
+        console.error('Erreur stats:', error);
+        res.status(500).send('Erreur serveur');
+    }
+});
+
+app.get('/api/stats/export', async (req, res) => {
+    try {
+        const data = await readData();
+        const stats = processStats(data.tickets);
+        const workbook = new Excel.Workbook();
+        
+        const period = req.query.period || 'day';
+        const periodData = stats[period];
+
+        // Feuille principale
+        const sheet = workbook.addWorksheet('Statistiques');
+        
+        sheet.addRow(['Période', 'Total tickets', 'Tickets GLPI']);
+        periodData.labels.forEach((label, index) => {
+            sheet.addRow([
+                label,
+                periodData.data[index],
+                periodData.glpiData[index]
+            ]);
+        });
+
+        // Tags
+        const tagsSheet = workbook.addWorksheet('Tags');
+        tagsSheet.addRow(['Tag', 'Utilisations']);
+        stats.topTags.forEach(tag => {
+            tagsSheet.addRow([tag.name, tag.count]);
+        });
+
+        // Appelants
+        const callersSheet = workbook.addWorksheet('Appelants');
+        callersSheet.addRow(['Appelant', 'Tickets']);
+        stats.topCallers.forEach(caller => {
+            callersSheet.addRow([caller.name, caller.count]);
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=stats-tickets-${period}.xlsx`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        console.error('Erreur export:', error);
+        res.status(500).send('Erreur export');
+    }
+});
+
+// Routes des tickets
 app.post('/api/tickets', requireLogin, async (req, res) => {
     try {
         const data = await readData();
