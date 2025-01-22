@@ -1,0 +1,24 @@
+# Node
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Données de l'application
+data/*
+!data/.gitkeep
+
+# Fichiers uploadés
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+logs
+*.log
+
+# Environnement
+.env
+.env.local
+
+# Système
+.DS_Store
+Thumbs.db
