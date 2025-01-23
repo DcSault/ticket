@@ -7,7 +7,7 @@ const session = require('express-session');
 const Excel = require('exceljs');
 
 const app = express();
-const port = 3000;
+const port = 666;
 const DATA_FILE = path.join(__dirname, 'data', 'tickets.json');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
