@@ -53,14 +53,15 @@ const requireLogin = (req, res, next) => {
     next();
 };
 
-// Structure initiale des données
+// Mise à jour de initialData
 const initialData = {
     tickets: [],
     tags: [],
     savedFields: {
         callers: [],
         reasons: []
-    }
+    },
+    savedUsers: []  // Ajout de cette ligne
 };
 
 // Fonctions utilitaires
@@ -192,13 +193,20 @@ function processStats(tickets) {
     return stats;
 }
 // Routes d'authentification
-app.get('/login', (req, res) => {
-    res.render('login');
+app.get('/login', async (req, res) => {
+    const data = await readData();
+    res.render('login', { savedUsers: data.savedUsers || [] });
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username } = req.body;
     if (username && username.trim()) {
+        const data = await readData();
+        if (!data.savedUsers) data.savedUsers = [];
+        if (!data.savedUsers.includes(username.trim())) {
+            data.savedUsers.push(username.trim());
+            await writeData(data);
+        }
         req.session.username = username.trim();
         res.redirect('/');
     } else {

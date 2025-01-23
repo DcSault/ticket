@@ -3,6 +3,37 @@
 <head>
     <title>Login - Support Tickets</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .autocomplete-list {
+            display: none;
+            position: absolute;
+            width: 100%;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 0.375rem 0.375rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .autocomplete-list.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+
+        .autocomplete-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .autocomplete-item.selected {
+            background-color: #e5e7eb;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen flex items-center justify-center">
@@ -10,33 +41,125 @@
             <div class="bg-white p-8 rounded-lg shadow-md">
                 <h1 class="text-2xl font-bold mb-6 text-center">Support Tickets</h1>
                 
-                <div class="space-y-4">
-                    <form action="/login" method="POST" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Votre nom</label>
+                <form action="/login" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Votre nom</label>
+                        <div class="relative">
                             <input type="text" 
                                    name="username" 
                                    required 
                                    placeholder="Entrez votre nom"
-                                   class="w-full p-2 border rounded">
+                                   class="w-full p-2 border rounded"
+                                   list="usernames">
+                            <datalist id="usernames">
+                                <% savedUsers.forEach(user => { %>
+                                    <option value="<%= user %>">
+                                <% }) %>
+                            </datalist>
                         </div>
-                        <button type="submit" 
-                                class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                            Se connecter
-                        </button>
-                    </form>
-                    
-                    <div class="text-center">
-                        <a href="/stats" class="text-blue-500 hover:text-blue-700 flex items-center justify-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                            Voir les statistiques
-                        </a>
                     </div>
+                    <button type="submit" 
+                            class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Se connecter
+                    </button>
+                </form>
+
+                <div class="mt-4">
+                    <a href="/stats" class="text-blue-500 hover:text-blue-700 flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Voir les statistiques
+                    </a>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        // Ajoutez l'autocomplétion améliorée ici si nécessaire
+        class Autocomplete {
+            constructor(input, items) {
+                this.input = input;
+                this.items = items;
+                this.currentFocus = -1;
+                this.setup();
+            }
+
+            setup() {
+                this.list = document.createElement('div');
+                this.list.classList.add('autocomplete-list');
+                this.input.parentNode.appendChild(this.list);
+
+                this.input.addEventListener('input', () => this.updateList());
+                this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
+                document.addEventListener('click', (e) => {
+                    if (!this.input.contains(e.target)) {
+                        this.list.classList.remove('show');
+                    }
+                });
+            }
+
+            updateList() {
+                const value = this.input.value.toLowerCase();
+                this.currentFocus = -1;
+                this.list.innerHTML = '';
+
+                if (!value) {
+                    this.list.classList.remove('show');
+                    return;
+                }
+
+                const matchingItems = this.items.filter(item =>
+                    item.toLowerCase().includes(value)
+                );
+
+                if (matchingItems.length) {
+                    this.list.classList.add('show');
+                    matchingItems.forEach(item => {
+                        const div = document.createElement('div');
+                        div.classList.add('autocomplete-item');
+                        div.textContent = item;
+                        div.addEventListener('click', () => {
+                            this.input.value = item;
+                            this.list.classList.remove('show');
+                        });
+                        this.list.appendChild(div);
+                    });
+                }
+            }
+
+            handleKeydown(e) {
+                const items = this.list.getElementsByTagName('div');
+                if (!items.length) return;
+
+                if (e.key === 'ArrowDown') {
+                    this.currentFocus++;
+                    if (this.currentFocus >= items.length) this.currentFocus = 0;
+                    this.setActive(items);
+                } else if (e.key === 'ArrowUp') {
+                    this.currentFocus--;
+                    if (this.currentFocus < 0) this.currentFocus = items.length - 1;
+                    this.setActive(items);
+                } else if (e.key === 'Enter' && this.currentFocus > -1) {
+                    e.preventDefault();
+                    items[this.currentFocus].click();
+                }
+            }
+
+            setActive(items) {
+                Array.from(items).forEach(item => item.classList.remove('selected'));
+                if (this.currentFocus > -1) {
+                    items[this.currentFocus].classList.add('selected');
+                }
+            }
+        }
+
+        // Initialisation
+        window.onload = function() {
+            const usernameInput = document.querySelector('input[name="username"]');
+            new Autocomplete(usernameInput, <%- JSON.stringify(savedUsers) %>);
+        };
+    </script>
 </body>
 </html>
