@@ -56,12 +56,13 @@ const requireLogin = (req, res, next) => {
 // Mise à jour de initialData
 const initialData = {
     tickets: [],
+    archives: [],
     tags: [],
     savedFields: {
         callers: [],
         reasons: []
     },
-    savedUsers: []  // Ajout de cette ligne
+    savedUsers: []
 };
 
 // Fonctions utilitaires
@@ -99,7 +100,8 @@ async function writeData(data) {
 }
 
 // Fonction Stats
-function processStats(tickets) {
+// Modification de la fonction processStats
+function processStats(tickets, archives = []) {
     const now = new Date();
     const stats = {
         day: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
@@ -134,11 +136,8 @@ function processStats(tickets) {
         stats.month.glpiData.push(0);
     }
 
-    // Analyse des tickets
-    const callerStats = {};
-    const tagStats = {};
-    
-    tickets.forEach(ticket => {
+    // Fonction pour traiter un ticket
+    const processTicket = (ticket) => {
         const date = new Date(ticket.createdAt);
         const dayDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
         const monthDiff = (now.getMonth() - date.getMonth()) + (now.getFullYear() - date.getFullYear()) * 12;
@@ -173,7 +172,17 @@ function processStats(tickets) {
         }
 
         callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
-    });
+    };
+
+    // Analyse des tickets et des archives
+    const callerStats = {};
+    const tagStats = {};
+    
+    // Traiter les tickets actifs
+    tickets.forEach(processTicket);
+    
+    // Traiter les archives
+    archives.forEach(processTicket);
 
     stats.topCallers = Object.entries(callerStats)
         .map(([name, count]) => ({ name, count }))
@@ -192,6 +201,34 @@ function processStats(tickets) {
 
     return stats;
 }
+
+// Analyse Archivage
+function shouldArchive(ticket) {
+    const oneDayAgo = new Date();
+    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+    const ticketDate = new Date(ticket.createdAt);
+    return ticketDate < oneDayAgo;
+}
+
+async function archiveOldTickets() {
+    const data = await readData();
+    const [toArchive, current] = data.tickets.reduce(([arch, curr], ticket) => {
+        return shouldArchive(ticket) 
+            ? [[...arch, ticket], curr]
+            : [arch, [...curr, ticket]];
+    }, [[], []]);
+
+    if (toArchive.length > 0) {
+        data.archives = [...toArchive, ...(data.archives || [])];
+        data.tickets = current;
+        await writeData(data);
+    }
+}
+
+// Ajouter à startServer()
+setInterval(archiveOldTickets, 24 * 60 * 60 * 1000); // Vérification journalière
+
+
 // Routes d'authentification
 app.get('/login', async (req, res) => {
     const data = await readData();
@@ -239,7 +276,7 @@ app.get('/', requireLogin, async (req, res) => {
 app.get('/stats', async (req, res) => {
     try {
         const data = await readData();
-        const stats = processStats(data.tickets);
+        const stats = processStats(data.tickets, data.archives || []);
         res.render('stats', { stats });
     } catch (error) {
         console.error('Erreur stats:', error);
@@ -247,10 +284,11 @@ app.get('/stats', async (req, res) => {
     }
 });
 
+// Mise à jour de la route d'export
 app.get('/api/stats/export', async (req, res) => {
     try {
         const data = await readData();
-        const stats = processStats(data.tickets);
+        const stats = processStats(data.tickets, data.archives || []);
         const workbook = new Excel.Workbook();
         
         const period = req.query.period || 'day';
@@ -476,6 +514,112 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
     } catch (error) {
         console.error('Erreur suppression champ:', error);
         res.status(500).send('Erreur lors de la suppression');
+    }
+});
+
+app.get('/archives', requireLogin, async (req, res) => {
+    try {
+        const data = await readData();
+        let archives = data.archives || [];
+        const { search, filter, value, startDate, endDate } = req.query;
+        
+        // Filtrage par date
+        if (startDate || endDate) {
+            archives = archives.filter(ticket => {
+                const ticketDate = new Date(ticket.createdAt);
+                const start = startDate ? new Date(startDate) : new Date(0);
+                const end = endDate ? new Date(endDate) : new Date();
+                end.setHours(23, 59, 59, 999); // Inclure toute la journée de fin
+                return ticketDate >= start && ticketDate <= end;
+            });
+        }
+
+        // Filtrage par recherche globale
+        if (search) {
+            const searchLower = search.toLowerCase();
+            archives = archives.filter(ticket => 
+                ticket.caller.toLowerCase().includes(searchLower) ||
+                ticket.reason.toLowerCase().includes(searchLower) ||
+                ticket.tags.some(tag => tag.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Filtrage spécifique
+        if (filter && value) {
+            const valueLower = value.toLowerCase();
+            switch(filter) {
+                case 'caller':
+                    archives = archives.filter(ticket => 
+                        ticket.caller.toLowerCase().includes(valueLower));
+                    break;
+                case 'tag':
+                    archives = archives.filter(ticket => 
+                        ticket.tags.some(tag => tag.toLowerCase().includes(valueLower)));
+                    break;
+                case 'reason':
+                    archives = archives.filter(ticket => 
+                        ticket.reason.toLowerCase().includes(valueLower));
+                    break;
+            }
+        }
+
+        // Tri des archives
+        archives.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        res.render('archives', { 
+            archives,
+            savedFields: data.savedFields,
+            search,
+            filter,
+            value,
+            startDate,
+            endDate
+        });
+    } catch (error) {
+        console.error('Erreur archives:', error);
+        res.status(500).send('Erreur serveur');
+    }
+});
+
+app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
+    try {
+        const data = await readData();
+        const ticket = data.archives.find(t => t.id === req.params.id);
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Archive non trouvée' });
+        }
+
+        res.json(ticket);
+    } catch (error) {
+        console.error('Erreur détails archive:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
+    try {
+        const data = await readData();
+        const ticketIndex = data.tickets.findIndex(t => t.id === req.params.id);
+        
+        if (ticketIndex === -1) return res.status(404).send('Ticket non trouvé');
+
+        const ticket = data.tickets[ticketIndex];
+        if (!data.archives) data.archives = [];
+        
+        data.archives.unshift({
+            ...ticket,
+            archivedAt: new Date().toISOString(),
+            archivedBy: req.session.username
+        });
+        
+        data.tickets.splice(ticketIndex, 1);
+        await writeData(data);
+        
+        res.redirect('/');
+    } catch (error) {
+        console.error('Erreur archivage:', error);
+        res.status(500).send('Erreur lors de l\'archivage');
     }
 });
 

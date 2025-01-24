@@ -16,37 +16,38 @@
             overflow-y: auto;
             z-index: 1000;
         }
-
-        .autocomplete-list.show {
-            display: block;
-        }
-
+        .autocomplete-list.show { display: block; }
         .autocomplete-item {
             padding: 0.5rem 1rem;
             cursor: pointer;
         }
-
-        .autocomplete-item:hover {
-            background-color: #f3f4f6;
-        }
-
-        .autocomplete-item.selected {
-            background-color: #e5e7eb;
-        }
+        .autocomplete-item:hover { background-color: #f3f4f6; }
+        .autocomplete-item.selected { background-color: #e5e7eb; }
     </style>
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <!-- En-tête avec utilisateur connecté -->
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold">Support Tickets</h1>
             <div class="flex items-center gap-4">
+                <a href="/archives" class="text-gray-600 hover:text-gray-800 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Archives
+                </a>
+                <a href="/stats" class="text-gray-600 hover:text-gray-800 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Statistiques
+                </a>
                 <span class="text-gray-600">
                     Connecté en tant que: <strong><%= username %></strong>
                 </span>
-                <a href="/logout" class="text-red-500 hover:text-red-700">
-                    Déconnexion
-                </a>
+                <a href="/logout" class="text-red-500 hover:text-red-700">Déconnexion</a>
             </div>
         </div>
         
@@ -74,6 +75,11 @@
                                required 
                                list="callers"
                                class="w-full p-2 border rounded">
+                        <datalist id="callers">
+                            <% savedFields.callers.forEach(caller => { %>
+                                <option value="<%= caller %>">
+                            <% }) %>
+                        </datalist>
                     </div>
                 </div>
 
@@ -82,7 +88,13 @@
                     <div class="relative">
                         <input type="text" 
                                name="reason" 
+                               list="reasons"
                                class="w-full p-2 border rounded">
+                        <datalist id="reasons">
+                            <% savedFields.reasons.forEach(reason => { %>
+                                <option value="<%= reason %>">
+                            <% }) %>
+                        </datalist>
                     </div>
                 </div>
 
@@ -100,8 +112,7 @@
                 </button>
             </form>
         </div>
-
-        <!-- Bouton pour afficher/masquer les champs mémorisés -->
+        <!-- Champs mémorisés -->
         <div class="text-right mb-4">
             <button onclick="toggleSavedFields()" 
                     class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center gap-2 ml-auto">
@@ -112,7 +123,6 @@
             </button>
         </div>
 
-        <!-- Champs mémorisés (caché par défaut) -->
         <div id="savedFieldsSection" class="bg-white p-6 rounded-lg shadow-md mb-8 hidden">
             <h2 class="text-xl font-semibold mb-4">Champs mémorisés</h2>
             
@@ -150,6 +160,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Liste des tickets -->
         <div class="space-y-4">
             <% tickets.forEach(ticket => { %>
@@ -159,18 +170,14 @@
                             <div class="flex items-center gap-2">
                                 <h3 class="font-semibold"><%= ticket.caller %></h3>
                                 <% if (ticket.isGLPI) { %>
-                                    <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                                        GLPI
-                                    </span>
+                                    <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">GLPI</span>
                                 <% } %>
                             </div>
                             <% if (!ticket.isGLPI) { %>
                                 <p class="text-gray-600"><%= ticket.reason %></p>
                                 <div class="flex gap-2 mt-2">
                                     <% ticket.tags.forEach(tag => { %>
-                                        <span class="bg-gray-200 px-2 py-1 rounded text-sm">
-                                            <%= tag %>
-                                        </span>
+                                        <span class="bg-gray-200 px-2 py-1 rounded text-sm"><%= tag %></span>
                                     <% }) %>
                                 </div>
                             <% } %>
@@ -178,32 +185,34 @@
                                 Créé le <%= new Date(ticket.createdAt).toLocaleString() %>
                                 par <%= ticket.createdBy %>
                                 <% if (ticket.lastModifiedBy) { %>
-                                    <br>
-                                    Modifié le <%= new Date(ticket.lastModifiedAt).toLocaleString() %>
+                                    <br>Modifié le <%= new Date(ticket.lastModifiedAt).toLocaleString() %>
                                     par <%= ticket.lastModifiedBy %>
                                 <% } %>
                             </p>
                         </div>
                         <div class="flex gap-2">
+                            <!-- Bouton Archiver toujours visible -->
+                            <button onclick="archiveTicket('<%= ticket.id %>')"
+                                    class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 whitespace-nowrap">
+                                Archiver
+                            </button>
                             <% if (!ticket.isGLPI) { %>
-                                <a href="/ticket/<%= ticket.id %>" 
-                                   class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                <!-- Bouton Voir détails -->
+                                <a href="/ticket/<%= ticket.id %>" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                                     Voir détails
                                 </a>
                             <% } %>
-                            <a href="/ticket/<%= ticket.id %>/edit" 
-                               class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                            <!-- Bouton Modifier -->
+                            <a href="/ticket/<%= ticket.id %>/edit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
                                 Modifier
                             </a>
-                            <form action="/api/tickets/<%= ticket.id %>/delete" 
-                                  method="POST"
-                                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce ticket ?')">
-                                <button type="submit"
-                                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                            <!-- Bouton Supprimer -->
+                            <form action="/api/tickets/<%= ticket.id %>/delete" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce ticket ?')">
+                                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
                                     Supprimer
                                 </button>
                             </form>
-                        </div>
+                        </div>                        
                     </div>
                 </div>
             <% }) %>
@@ -211,7 +220,6 @@
     </div>
 
     <script>
-        // Fonction pour basculer l'affichage des champs mémorisés
         function toggleSavedFields() {
             const section = document.getElementById('savedFieldsSection');
             const icon = document.getElementById('savedFieldsIcon');
@@ -228,103 +236,6 @@
             }
         }
 
-        // Amélioration de l'autocomplétion
-        class Autocomplete {
-            constructor(input, items) {
-                this.input = input;
-                this.items = items;
-                this.currentFocus = -1;
-                this.setup();
-            }
-
-            setup() {
-                this.list = document.createElement('div');
-                this.list.classList.add('autocomplete-list');
-                this.input.parentNode.appendChild(this.list);
-
-                this.input.addEventListener('input', () => this.updateList());
-                this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
-                this.input.addEventListener('focus', () => this.updateList());
-                document.addEventListener('click', (e) => {
-                    if (!this.input.contains(e.target)) {
-                        this.list.classList.remove('show');
-                    }
-                });
-            }
-
-            updateList() {
-                const value = this.input.value.toLowerCase();
-                this.currentFocus = -1;
-                this.list.innerHTML = '';
-
-                if (!value) {
-                    this.list.classList.remove('show');
-                    return;
-                }
-
-                const matchingItems = this.items.filter(item =>
-                    item.toLowerCase().includes(value)
-                );
-
-                if (matchingItems.length) {
-                    this.list.classList.add('show');
-                    matchingItems.forEach(item => {
-                        const div = document.createElement('div');
-                        div.classList.add('autocomplete-item');
-                        const index = item.toLowerCase().indexOf(value);
-                        div.innerHTML = item.slice(0, index) +
-                            `<strong>${item.slice(index, index + value.length)}</strong>` +
-                            item.slice(index + value.length);
-                        div.addEventListener('click', () => {
-                            this.input.value = item;
-                            this.list.classList.remove('show');
-                        });
-                        this.list.appendChild(div);
-                    });
-                } else {
-                    this.list.classList.remove('show');
-                }
-            }
-
-            handleKeydown(e) {
-                const items = this.list.getElementsByTagName('div');
-                if (!items.length) return;
-
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    this.currentFocus++;
-                    if (this.currentFocus >= items.length) this.currentFocus = 0;
-                    this.setActive(items);
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    this.currentFocus--;
-                    if (this.currentFocus < 0) this.currentFocus = items.length - 1;
-                    this.setActive(items);
-                } else if (e.key === 'Enter' && this.currentFocus > -1) {
-                    e.preventDefault();
-                    items[this.currentFocus].click();
-                }
-            }
-
-            setActive(items) {
-                Array.from(items).forEach(item => item.classList.remove('selected'));
-                if (this.currentFocus > -1) {
-                    items[this.currentFocus].classList.add('selected');
-                    items[this.currentFocus].scrollIntoView({ block: 'nearest' });
-                }
-            }
-        }
-
-        // Initialisation de l'autocomplétion
-        window.onload = function() {
-            const callerInput = document.querySelector('input[name="caller"]');
-            const reasonInput = document.querySelector('input[name="reason"]');
-            
-            new Autocomplete(callerInput, <%- JSON.stringify(savedFields.callers) %>);
-            new Autocomplete(reasonInput, <%- JSON.stringify(savedFields.reasons) %>);
-        };
-
-        // Fonction pour les champs GLPI
         function toggleGLPIFields(checkbox) {
             const nonGLPIFields = document.querySelectorAll('.non-glpi-field');
             nonGLPIFields.forEach(field => {
@@ -337,6 +248,17 @@
                     inputs.forEach(input => input.required = true);
                 }
             });
+        }
+
+        function archiveTicket(id) {
+            if (confirm('Voulez-vous archiver ce ticket ?')) {
+                fetch(`/api/tickets/${id}/archive`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(() => window.location.reload());
+            }
         }
     </script>
 </body>

@@ -195,7 +195,7 @@
             document.getElementById('totalTickets').textContent = data.total;
             document.getElementById('totalGLPI').textContent = data.glpi;
             document.getElementById('avgTicketsPerDay').textContent = 
-                (data.total / data.data.length).toFixed(1);
+            (data.total / data.data.filter(count => count > 0).length || 1).toFixed(1);
         }
 
         function openExportModal() {
