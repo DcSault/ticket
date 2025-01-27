@@ -29,27 +29,17 @@
                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div>
                        <label class="block text-sm font-medium mb-1">Date début</label>
-                       <div class="relative">
-                           <input type="date" 
-                                  name="startDate" 
-                                  value="<%= locals.startDate || '' %>"
-                                  class="w-full p-2 border rounded pr-10">
-                           <svg class="w-5 h-5 absolute right-2 top-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                           </svg>
-                       </div>
+                       <input type="date" 
+                              name="startDate" 
+                              value="<%= locals.startDate || '' %>"
+                              class="w-full p-2 border rounded">
                    </div>
                    <div>
                        <label class="block text-sm font-medium mb-1">Date fin</label>
-                       <div class="relative">
-                           <input type="date" 
-                                  name="endDate" 
-                                  value="<%= locals.endDate || '' %>"
-                                  class="w-full p-2 border rounded pr-10">
-                           <svg class="w-5 h-5 absolute right-2 top-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                           </svg>
-                       </div>
+                       <input type="date" 
+                              name="endDate" 
+                              value="<%= locals.endDate || '' %>"
+                              class="w-full p-2 border rounded">
                    </div>
                </div>
 
@@ -116,11 +106,23 @@
                                    </div>
                                <% } %>
                                <p class="text-sm text-gray-500 mt-2">
-                                   Créé le <%= new Date(ticket.createdAt).toLocaleString() %>
+                                   Créé le <%= new Date(ticket.createdAt).toLocaleString('fr-FR', {
+                                       year: 'numeric',
+                                       month: 'long',
+                                       day: 'numeric',
+                                       hour: '2-digit',
+                                       minute: '2-digit'
+                                   }) %>
                                    par <%= ticket.createdBy %>
                                    <% if (ticket.lastModifiedBy) { %>
                                        <br>
-                                       Modifié le <%= new Date(ticket.lastModifiedAt).toLocaleString() %>
+                                       Modifié le <%= new Date(ticket.lastModifiedAt).toLocaleString('fr-FR', {
+                                           year: 'numeric',
+                                           month: 'long',
+                                           day: 'numeric',
+                                           hour: '2-digit',
+                                           minute: '2-digit'
+                                       }) %>
                                        par <%= ticket.lastModifiedBy %>
                                    <% } %>
                                </p>
@@ -150,11 +152,19 @@
    </div>
 
    <script>
+       function formatDate(dateString) {
+           return new Date(dateString).toLocaleString('fr-FR', {
+               year: 'numeric',
+               month: 'long',
+               day: 'numeric',
+               hour: '2-digit',
+               minute: '2-digit'
+           });
+       }
+
        function showTicketDetails(ticketId) {
-           // Afficher le modal
            document.getElementById('detailsModal').classList.remove('hidden');
 
-           // Charger les détails (à implémenter avec une route API)
            fetch(`/api/archives/${ticketId}/details`)
                .then(response => response.json())
                .then(ticket => {
@@ -164,19 +174,19 @@
                        <div class="space-y-4">
                            <p><strong>Appelant:</strong> ${ticket.caller}</p>
                            <p><strong>Raison:</strong> ${ticket.reason}</p>
-                           <p><strong>Créé le:</strong> ${new Date(ticket.createdAt).toLocaleString()}</p>
+                           <p><strong>Créé le:</strong> ${formatDate(ticket.createdAt)}</p>
                            <p><strong>Par:</strong> ${ticket.createdBy}</p>
-                           ${ticket.messages ? `
+                           ${ticket.Messages ? `
                                <div class="mt-4">
                                    <h3 class="font-semibold mb-2">Messages</h3>
-                                   ${ticket.messages.map(msg => `
+                                   ${ticket.Messages.map(msg => `
                                        <div class="border-b pb-2 mb-2">
                                            ${msg.type === 'text' ? 
                                                `<p>${msg.content}</p>` :
                                                `<img src="${msg.content}" class="max-w-full h-auto">`
                                            }
                                            <p class="text-sm text-gray-500">
-                                               ${new Date(msg.timestamp).toLocaleString()} - ${msg.author}
+                                               ${formatDate(msg.createdAt)} - ${msg.author}
                                            </p>
                                        </div>
                                    `).join('')}
@@ -191,7 +201,6 @@
            document.getElementById('detailsModal').classList.add('hidden');
        }
 
-       // Fermer le modal avec Escape
        document.addEventListener('keydown', function(event) {
            if (event.key === 'Escape') {
                closeModal();
