@@ -40,9 +40,17 @@ class ThemeManager {
         if (isDark) {
             document.body.style.backgroundColor = '#1f2937';
             document.body.style.color = '#f3f4f6';
+            document.querySelector('.bg-white').style.backgroundColor = '#374151';
+            document.querySelectorAll('h1, label').forEach(el => {
+                el.style.color = '#f3f4f6';
+            });
         } else {
             document.body.style.backgroundColor = '#f3f4f6';
             document.body.style.color = '#1f2937';
+            document.querySelector('.bg-white').style.backgroundColor = 'white';
+            document.querySelectorAll('h1, label').forEach(el => {
+                el.style.color = '#1f2937';
+            });
         }
         
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
