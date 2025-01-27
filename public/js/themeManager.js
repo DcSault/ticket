@@ -1,4 +1,3 @@
-// public/js/themeManager.js
 class ThemeManager {
     constructor() {
         this.init();
@@ -22,45 +21,105 @@ class ThemeManager {
                 <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
             </svg>
         `;
+
+        // Appliquer les styles sur hover
+        button.addEventListener('mouseenter', () => {
+            button.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            button.style.transform = 'scale(1.1)';
+        });
+        button.addEventListener('mouseleave', () => {
+            button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            button.style.transform = 'scale(1)';
+        });
+
+        // Ajouter une transition fluide
+        button.style.transition = 'all 0.3s ease';
+
         document.body.appendChild(button);
     }
 
     loadTheme() {
-        this.setTheme(localStorage.getItem('theme') === 'dark' ||
-            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches));
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        this.setTheme(isDark);
     }
 
     setTheme(isDark) {
         const darkIcon = document.getElementById('theme-toggle-dark-icon');
         const lightIcon = document.getElementById('theme-toggle-light-icon');
+        const themeToggle = document.getElementById('theme-toggle');
+        
         document.documentElement.classList.toggle('dark', isDark);
         darkIcon.classList.toggle('hidden', !isDark);
         lightIcon.classList.toggle('hidden', isDark);
+
+        // Sélectionner tous les éléments nécessaires
+        const mainCard = document.querySelector('.bg-white');
+        const input = document.querySelector('input');
+        const statsLink = document.querySelector('a[href="/stats"]');
         
         if (isDark) {
+            // Mode sombre
             document.body.style.backgroundColor = '#1f2937';
-            document.querySelector('.bg-white').style.backgroundColor = '#374151';
-            document.querySelectorAll('h1, label, a, input, button').forEach(el => {
+            mainCard.style.backgroundColor = '#374151';
+            themeToggle.style.backgroundColor = '#374151';
+            themeToggle.style.color = 'white';
+            
+            // Styles des textes
+            document.querySelectorAll('h1, label, input, button').forEach(el => {
                 el.style.color = 'white';
             });
-            document.querySelector('input').style.backgroundColor = '#1f2937';
+            
+            // Styles de l'input
+            input.style.backgroundColor = '#1f2937';
+            input.style.borderColor = '#4b5563';
+            
+            // Style du lien stats
+            statsLink.style.color = '#93c5fd';
         } else {
+            // Mode clair
             document.body.style.backgroundColor = '#f3f4f6';
-            document.querySelector('.bg-white').style.backgroundColor = 'white';
+            mainCard.style.backgroundColor = 'white';
+            themeToggle.style.backgroundColor = 'white';
+            themeToggle.style.color = 'black';
+            
+            // Styles des textes
             document.querySelectorAll('h1, label, input').forEach(el => {
                 el.style.color = '#1f2937';
             });
-            document.querySelector('input').style.backgroundColor = 'white';
+            
+            // Styles de l'input
+            input.style.backgroundColor = 'white';
+            input.style.borderColor = '#e5e7eb';
+            
+            // Style du lien stats
+            statsLink.style.color = '#3b82f6';
         }
+
+        // Ajouter les transitions
+        document.body.style.transition = 'background-color 0.3s ease';
+        mainCard.style.transition = 'background-color 0.3s ease, border-color 0.3s ease';
+        document.querySelectorAll('h1, label, input, button, a').forEach(el => {
+            el.style.transition = 'color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease';
+        });
         
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
     addListeners() {
+        // Écouteur pour le bouton de thème
         document.getElementById('theme-toggle').addEventListener('click', () => {
             this.setTheme(!document.documentElement.classList.contains('dark'));
+        });
+
+        // Écouteur pour les changements de préférence système
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (!localStorage.getItem('theme')) {
+                this.setTheme(e.matches);
+            }
         });
     }
 }
 
+// Créer l'instance
 new ThemeManager();
