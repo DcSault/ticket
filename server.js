@@ -476,79 +476,101 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
 // Fonction pour générer les statistiques
 async function processStats(tickets) {
     const now = new Date();
+    now.setHours(23, 59, 59, 999); // Fin de la journée courante
+    
     const stats = {
         day: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
         week: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
         month: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
-        detailedData: [] // Données détaillées pour le filtrage dynamique
+        detailedData: []
     };
 
-    // Initialiser les périodes
+    // Créer un map pour stocker les compteurs par date
+    const dailyCounts = new Map();
+    const dailyGLPICounts = new Map();
+
+    // Initialiser les 30 derniers jours avec des compteurs à 0
     for (let i = 29; i >= 0; i--) {
-        const date = new Date(now - i * 24 * 60 * 60 * 1000);
-        stats.day.labels.push(date.toLocaleDateString('fr-FR'));
-        stats.day.data.push(0);
-        stats.day.glpiData.push(0);
-    }
-
-    for (let i = 3; i >= 0; i--) {
-        const weekStart = new Date(now - (i * 7 + 6) * 24 * 60 * 60 * 1000);
-        const weekEnd = new Date(now - i * 7 * 24 * 60 * 60 * 1000);
-        stats.week.labels.push(`${weekStart.toLocaleDateString('fr-FR')} - ${weekEnd.toLocaleDateString('fr-FR')}`);
-        stats.week.data.push(0);
-        stats.week.glpiData.push(0);
-    }
-
-    for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        stats.month.labels.push(date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
-        stats.month.data.push(0);
-        stats.month.glpiData.push(0);
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        const dateStr = date.toLocaleDateString('fr-FR');
+        dailyCounts.set(dateStr, 0);
+        dailyGLPICounts.set(dateStr, 0);
+        stats.day.labels.push(dateStr);
     }
 
     // Traiter chaque ticket
     tickets.forEach(ticket => {
-        // Ajouter les données détaillées pour le filtrage
+        const ticketDate = new Date(ticket.createdAt);
+        ticketDate.setHours(0, 0, 0, 0);
+        const dateStr = ticketDate.toLocaleDateString('fr-FR');
+
+        // Ajouter aux données détaillées
         stats.detailedData.push({
+            id: ticket.id,
             date: ticket.createdAt,
             caller: ticket.caller,
             tags: ticket.tags,
             isGLPI: ticket.isGLPI
         });
 
-        const date = new Date(ticket.createdAt);
-        const dayDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-        const monthDiff = (now.getMonth() - date.getMonth()) + (now.getFullYear() - date.getFullYear()) * 12;
-
-        // Statistiques journalières
-        if (dayDiff < 30) {
-            const dayIndex = 29 - dayDiff;
-            if (dayIndex >= 0 && dayIndex < 30) {
-                stats.day.data[dayIndex]++;
-                if (ticket.isGLPI) stats.day.glpiData[dayIndex]++;
-            }
-        }
-
-        // Statistiques hebdomadaires
-        if (dayDiff < 28) {
-            const weekIndex = Math.floor(dayDiff / 7);
-            if (weekIndex >= 0 && weekIndex < 4) {
-                stats.week.data[3 - weekIndex]++;
-                if (ticket.isGLPI) stats.week.glpiData[3 - weekIndex]++;
-            }
-        }
-
-        // Statistiques mensuelles
-        if (monthDiff < 12) {
-            const monthIndex = 11 - monthDiff;
-            if (monthIndex >= 0 && monthIndex < 12) {
-                stats.month.data[monthIndex]++;
-                if (ticket.isGLPI) stats.month.glpiData[monthIndex]++;
+        // Compter seulement si la date est dans notre période de 30 jours
+        if (dailyCounts.has(dateStr)) {
+            dailyCounts.set(dateStr, (dailyCounts.get(dateStr) || 0) + 1);
+            if (ticket.isGLPI) {
+                dailyGLPICounts.set(dateStr, (dailyGLPICounts.get(dateStr) || 0) + 1);
             }
         }
     });
 
-    // Calculer les totaux pour chaque période
+    // Remplir les tableaux de données
+    stats.day.labels.forEach(dateStr => {
+        stats.day.data.push(dailyCounts.get(dateStr) || 0);
+        stats.day.glpiData.push(dailyGLPICounts.get(dateStr) || 0);
+    });
+
+    // Calculer les statistiques hebdomadaires
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1);
+    weekStart.setHours(0, 0, 0, 0);
+
+    for (let i = 3; i >= 0; i--) {
+        const start = new Date(weekStart);
+        start.setDate(start.getDate() - (i * 7));
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        
+        const weekLabel = `${start.toLocaleDateString('fr-FR')} - ${end.toLocaleDateString('fr-FR')}`;
+        stats.week.labels.push(weekLabel);
+        
+        const weekTickets = tickets.filter(ticket => {
+            const ticketDate = new Date(ticket.createdAt);
+            return ticketDate >= start && ticketDate <= end;
+        });
+        
+        stats.week.data.push(weekTickets.length);
+        stats.week.glpiData.push(weekTickets.filter(t => t.isGLPI).length);
+    }
+
+    // Calculer les statistiques mensuelles
+    for (let i = 11; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        
+        const monthLabel = monthStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+        stats.month.labels.push(monthLabel);
+        
+        const monthTickets = tickets.filter(ticket => {
+            const ticketDate = new Date(ticket.createdAt);
+            return ticketDate >= monthStart && ticketDate <= monthEnd;
+        });
+        
+        stats.month.data.push(monthTickets.length);
+        stats.month.glpiData.push(monthTickets.filter(t => t.isGLPI).length);
+    }
+
+    // Calculer les totaux
     ['day', 'week', 'month'].forEach(period => {
         stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
         stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
@@ -614,6 +636,9 @@ async function startServer() {
 
         await fsPromises.mkdir(UPLOADS_DIR, { recursive: true });
         console.log('✅ Dossier uploads vérifié');
+
+        const VERSION = '1.0.1';
+        console.log(`🚀 Version du serveur : ${VERSION}`);
 
         app.listen(process.env.PORT, () => {
             console.log(`✨ Serveur démarré sur http://localhost:${process.env.PORT}`);
