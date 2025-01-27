@@ -46,13 +46,13 @@
        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
            <h2 class="text-xl font-semibold mb-4">Messages</h2>
            <div class="space-y-4">
-               <% if (ticket.messages && ticket.messages.length > 0) { %>
-                   <% ticket.messages.forEach(message => { %>
+               <% if (ticket.Messages && ticket.Messages.length > 0) { %>
+                   <% ticket.Messages.forEach(message => { %>
                        <div class="border-b pb-4">
                            <div class="flex items-center gap-2 mb-2">
                                <span class="font-medium"><%= message.author %></span>
                                <span class="text-xs text-gray-500">
-                                   <%= new Date(message.timestamp).toLocaleString() %>
+                                   <%= new Date(message.createdAt).toLocaleString() %>
                                </span>
                            </div>
                            <% if (message.type === 'text') { %>

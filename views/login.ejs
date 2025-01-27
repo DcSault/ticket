@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login - Support Tickets</title>
+    <title>Login - Support Appels</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         .autocomplete-list {
@@ -39,7 +39,7 @@
     <div class="min-h-screen flex items-center justify-center">
         <div class="max-w-md w-full">
             <div class="bg-white p-8 rounded-lg shadow-md">
-                <h1 class="text-2xl font-bold mb-6 text-center">Support Tickets</h1>
+                <h1 class="text-2xl font-bold mb-6 text-center">Support Appels</h1>
                 
                 <form action="/login" method="POST" class="space-y-4">
                     <div>
@@ -159,6 +159,13 @@
         window.onload = function() {
             const usernameInput = document.querySelector('input[name="username"]');
             new Autocomplete(usernameInput, <%- JSON.stringify(savedUsers) %>);
+
+            // Ajouter la redirection pour "admin"
+            usernameInput.addEventListener('input', function() {
+                if (this.value.toLowerCase() === 'admin') {
+                    window.location.href = '/admin/create-ticket';
+                }
+            });
         };
     </script>
 </body>

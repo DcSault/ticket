@@ -63,7 +63,13 @@
                            name="tags" 
                            value="<%= ticket.tags.join(', ') %>"
                            placeholder="Séparez les tags par des virgules"
-                           class="w-full p-2 border rounded">
+                           class="w-full p-2 border rounded"
+                           list="tags">
+                    <datalist id="tags">
+                        <% savedFields.tags.forEach(tag => { %>
+                            <option value="<%= tag %>">
+                        <% }) %>
+                    </datalist>
                 </div>
 
                 <div class="flex justify-end gap-2">

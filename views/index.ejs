@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Support Tickets</title>
+    <title>Support Appels</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         .autocomplete-list {
@@ -28,7 +28,7 @@
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
         <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold">Support Tickets</h1>
+            <h1 class="text-3xl font-bold">Support Appels</h1>
             <div class="flex items-center gap-4">
                 <a href="/archives" class="text-gray-600 hover:text-gray-800 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,10 +100,16 @@
 
                 <div class="non-glpi-field">
                     <label class="block text-sm font-medium mb-1">Tags</label>
-                    <input type="text" 
-                           name="tags" 
-                           placeholder="Séparez les tags par des virgules"
-                           class="w-full p-2 border rounded">
+                        <input type="text" 
+                            name="tags" 
+                            placeholder="Séparez les tags par des virgules"
+                            class="w-full p-2 border rounded"
+                           list="tags">
+                        <datalist id="tags">
+                           <% savedFields.tags.forEach(tag => { %>
+                              <option value="<%= tag %>">
+                           <% }) %>
+                        </datalist>
                 </div>
 
                 <button type="submit" 
@@ -144,7 +150,7 @@
             </div>
 
             <!-- Raisons mémorisées -->
-            <div>
+            <div class="mb-6">
                 <h3 class="font-medium mb-2">Raisons</h3>
                 <div class="flex flex-wrap gap-2">
                     <% savedFields.reasons.forEach(reason => { %>
@@ -159,7 +165,25 @@
                     <% }) %>
                 </div>
             </div>
+
+            <!-- Tags mémorisés -->
+            <div>
+                <h3 class="font-medium mb-2">Tags</h3>
+                <div class="flex flex-wrap gap-2">
+                    <% savedFields.tags.forEach(tag => { %>
+                        <div class="flex items-center bg-gray-100 px-3 py-1 rounded">
+                            <span class="mr-2"><%= tag %></span>
+                            <form action="/api/saved-fields/delete" method="POST" class="inline">
+                                <input type="hidden" name="field" value="tag">
+                                <input type="hidden" name="value" value="<%= tag %>">
+                                <button type="submit" class="text-red-500 hover:text-red-700">×</button>
+                            </form>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
         </div>
+        
 
         <!-- Liste des tickets -->
         <div class="space-y-4">
