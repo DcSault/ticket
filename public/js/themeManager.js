@@ -22,6 +22,7 @@ class ThemeManager {
             </svg>
         `;
 
+        // Appliquer les styles sur hover
         button.addEventListener('mouseenter', () => {
             button.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
             button.style.transform = 'scale(1.1)';
@@ -31,7 +32,9 @@ class ThemeManager {
             button.style.transform = 'scale(1)';
         });
 
+        // Ajouter une transition fluide
         button.style.transition = 'all 0.3s ease';
+
         document.body.appendChild(button);
     }
 
@@ -50,150 +53,66 @@ class ThemeManager {
         darkIcon.classList.toggle('hidden', !isDark);
         lightIcon.classList.toggle('hidden', isDark);
 
-        // Sélectionneurs pour la page de statistiques
-        const mainCard = document.querySelectorAll('.bg-white');
-        const inputs = document.querySelectorAll('input, select');
-        const statsLink = document.querySelector('a[href="/"]');
-        const titles = document.querySelectorAll('h1, h2, h3, label');
-        const buttons = document.querySelectorAll('button');
-        const statBoxes = document.querySelectorAll('.bg-gray-50');
-        const loadingIndicator = document.querySelector('#loading .bg-white');
-
+        // Sélectionner tous les éléments nécessaires
+        const mainCard = document.querySelector('.bg-white');
+        const input = document.querySelector('input');
+        const statsLink = document.querySelector('a[href="/stats"]');
+        
         if (isDark) {
             // Mode sombre
             document.body.style.backgroundColor = '#1f2937';
-            mainCard.forEach(card => {
-                card.style.backgroundColor = '#374151';
-            });
+            mainCard.style.backgroundColor = '#374151';
             themeToggle.style.backgroundColor = '#374151';
             themeToggle.style.color = 'white';
             
             // Styles des textes
-            titles.forEach(el => {
+            document.querySelectorAll('h1, label, input, button').forEach(el => {
                 el.style.color = 'white';
             });
             
-            // Styles des inputs
-            inputs.forEach(input => {
-                input.style.backgroundColor = '#1f2937';
-                input.style.borderColor = '#4b5563';
-                input.style.color = 'white';
-            });
+            // Styles de l'input
+            input.style.backgroundColor = '#1f2937';
+            input.style.borderColor = '#4b5563';
             
-            // Style du lien retour
-            if (statsLink) {
-                statsLink.style.color = '#93c5fd';
-            }
-
-            // Style des boîtes de statistiques
-            statBoxes.forEach(box => {
-                box.style.backgroundColor = '#4b5563';
-            });
-
-            // Mise à jour des couleurs des graphiques si ils existent
-            this.updateChartsTheme(true);
-
-            if (loadingIndicator) {
-                loadingIndicator.style.backgroundColor = '#374151';
-                loadingIndicator.style.color = 'white';
-            }
-
+            // Style du lien stats
+            statsLink.style.color = '#93c5fd';
         } else {
             // Mode clair
             document.body.style.backgroundColor = '#f3f4f6';
-            mainCard.forEach(card => {
-                card.style.backgroundColor = 'white';
-            });
+            mainCard.style.backgroundColor = 'white';
             themeToggle.style.backgroundColor = 'white';
             themeToggle.style.color = 'black';
             
             // Styles des textes
-            titles.forEach(el => {
+            document.querySelectorAll('h1, label, input').forEach(el => {
                 el.style.color = '#1f2937';
             });
             
-            // Styles des inputs
-            inputs.forEach(input => {
-                input.style.backgroundColor = 'white';
-                input.style.borderColor = '#e5e7eb';
-                input.style.color = '#1f2937';
-            });
+            // Styles de l'input
+            input.style.backgroundColor = 'white';
+            input.style.borderColor = '#e5e7eb';
             
-            // Style du lien retour
-            if (statsLink) {
-                statsLink.style.color = '#3b82f6';
-            }
-
-            // Style des boîtes de statistiques
-            statBoxes.forEach(box => {
-                box.style.backgroundColor = '#f9fafb';
-            });
-
-            // Mise à jour des couleurs des graphiques
-            this.updateChartsTheme(false);
-
-            if (loadingIndicator) {
-                loadingIndicator.style.backgroundColor = 'white';
-                loadingIndicator.style.color = '#1f2937';
-            }
+            // Style du lien stats
+            statsLink.style.color = '#3b82f6';
         }
 
-        // Transitions
+        // Ajouter les transitions
         document.body.style.transition = 'background-color 0.3s ease';
-        mainCard.forEach(card => {
-            card.style.transition = 'background-color 0.3s ease, border-color 0.3s ease';
-        });
-        document.querySelectorAll('h1, h2, h3, label, input, button, a').forEach(el => {
+        mainCard.style.transition = 'background-color 0.3s ease, border-color 0.3s ease';
+        document.querySelectorAll('h1, label, input, button, a').forEach(el => {
             el.style.transition = 'color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease';
         });
         
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
-    updateChartsTheme(isDark) {
-        // Si Chart.js est disponible et qu'il y a des graphiques
-        if (window.Chart && document.querySelector('canvas')) {
-            const chartColors = isDark ? {
-                text: '#ffffff',
-                grid: '#4b5563',
-                lineColor: '#60a5fa',
-                barColor: '#818cf8',
-                backgroundColor: '#374151'
-            } : {
-                text: '#1f2937',
-                grid: '#e5e7eb',
-                lineColor: '#3b82f6',
-                barColor: '#6366f1',
-                backgroundColor: 'white'
-            };
-
-            // Mettre à jour tous les graphiques existants
-            Chart.helpers.each(Chart.instances, (chart) => {
-                chart.options.plugins.legend.labels.color = chartColors.text;
-                chart.options.scales.y.grid.color = chartColors.grid;
-                chart.options.scales.x.grid.color = chartColors.grid;
-                chart.options.scales.y.ticks.color = chartColors.text;
-                chart.options.scales.x.ticks.color = chartColors.text;
-                
-                // Mise à jour des couleurs des datasets
-                chart.data.datasets.forEach(dataset => {
-                    if (dataset.type === 'line') {
-                        dataset.borderColor = chartColors.lineColor;
-                    } else if (dataset.type === 'bar') {
-                        dataset.backgroundColor = chartColors.barColor;
-                    }
-                });
-                
-                chart.update();
-            });
-        }
-    }
-
     addListeners() {
+        // Écouteur pour le bouton de thème
         document.getElementById('theme-toggle').addEventListener('click', () => {
             this.setTheme(!document.documentElement.classList.contains('dark'));
         });
 
+        // Écouteur pour les changements de préférence système
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
             if (!localStorage.getItem('theme')) {
                 this.setTheme(e.matches);
@@ -202,4 +121,5 @@ class ThemeManager {
     }
 }
 
+// Créer l'instance
 new ThemeManager();
