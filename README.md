@@ -1,6 +1,6 @@
-# Système de Gestion des Tickets de Support
+# Système de Gestion des Appels de Support
 
-Un système de gestion de tickets de support permettant de suivre les demandes des utilisateurs, avec support pour les tickets GLPI et les tickets internes.
+Un système de gestion de Appels de Support permettant de suivre les demandes des utilisateurs, avec support pour les tickets GLPI et les tickets internes.
 
 ## 🌟 Fonctionnalités
 
