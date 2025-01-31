@@ -7,9 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Initialisation du thème -->
     <script>
-        // Synchroniser le thème au chargement de la page
         const theme = localStorage.getItem('color-theme');
         if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -19,7 +17,6 @@
     </script>
 
     <style>
-        /* Animation de transition pour le thème */
         * {
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
         }
@@ -27,7 +24,7 @@
 </head>
 
 <body class="bg-gray-100 dark:bg-gray-900">
-    <!-- Indicateur de chargement -->
+    <!-- Loading Spinner -->
     <div id="loading" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg dark:text-white">
             Chargement en cours...
@@ -35,29 +32,7 @@
     </div>
 
     <div class="container mx-auto px-4 py-8">
-<!-- Récapitulatif -->
-<div class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-    <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Récapitulatif</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-        <!-- Total des tickets -->
-        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded">
-            <div class="text-4xl font-bold mb-2 text-blue-600" id="totalTickets">0</div>
-            <div class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Total des tickets</div>
-        </div>
-        <!-- Tickets GLPI -->
-        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded">
-            <div class="text-4xl font-bold mb-2 text-blue-600" id="totalGLPI">0</div>
-            <div class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Tickets GLPI</div>
-        </div>
-        <!-- Moyenne par jour -->
-        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded">
-            <div class="text-4xl font-bold mb-2 text-blue-600" id="avgTicketsPerDay">0</div>
-            <div class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Moyenne par jour</div>
-        </div>
-    </div>
-</div>
-
-        <!-- En-tête avec bouton de retour et export -->
+        <!-- Header -->
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Statistiques des Appels</h1>
             <div class="flex items-center gap-4">
@@ -67,35 +42,59 @@
                 <button onclick="openExportModal()" 
                         class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Exporter Excel
                 </button>
             </div>
         </div>
 
-        <!-- Filtres de date -->
+        <!-- Summary Cards -->
+        <div class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Récapitulatif</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                <!-- Total Tickets -->
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded">
+                    <div class="text-4xl font-bold mb-2 text-blue-600" id="totalTickets">0</div>
+                    <div class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Total des tickets</div>
+                </div>
+                <!-- GLPI Tickets -->
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded">
+                    <div class="text-4xl font-bold mb-2 text-purple-600" id="totalGLPI">0</div>
+                    <div class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Tickets GLPI</div>
+                </div>
+                <!-- Blocking Tickets -->
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded">
+                    <div class="text-4xl font-bold mb-2 text-red-600" id="totalBlocking">0</div>
+                    <div class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Tickets Bloquants</div>
+                </div>
+                <!-- Average per Day -->
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded">
+                    <div class="text-4xl font-bold mb-2 text-green-600" id="avgTicketsPerDay">0</div>
+                    <div class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Moyenne par jour</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Filters -->
         <div class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Date de début</label>
-                    <input type="date" 
-                           id="startDate" 
+                    <input type="date" id="startDate" 
                            class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
                            onchange="filterDataByDate()">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Date de fin</label>
-                    <input type="date" 
-                           id="endDate" 
+                    <input type="date" id="endDate" 
                            class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
                            onchange="filterDataByDate()">
                 </div>
             </div>
         </div>
 
-        <!-- Sélecteur de période -->
+        <!-- Period Selector -->
         <div class="mb-8 flex gap-4">
             <button onclick="updatePeriod('day')" 
                     class="px-4 py-2 rounded transition-colors duration-200 bg-blue-500 text-white dark:bg-blue-600 dark:hover:bg-blue-700" 
@@ -108,9 +107,9 @@
                     id="btnMonth">Par mois</button>
         </div>
 
-        <!-- Graphiques -->
+        <!-- Charts -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Graphique principal -->
+            <!-- Main Chart -->
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md col-span-2">
                 <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Évolution des tickets</h2>
                 <div class="h-96">
@@ -118,7 +117,7 @@
                 </div>
             </div>
 
-            <!-- Répartition GLPI vs Non-GLPI -->
+            <!-- GLPI Distribution -->
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                 <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Répartition GLPI</h2>
                 <div class="h-64">
@@ -126,7 +125,15 @@
                 </div>
             </div>
 
-            <!-- Top des appelants -->
+            <!-- Blocking Distribution -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Répartition Bloquant/Non-Bloquant</h2>
+                <div class="h-64">
+                    <canvas id="blockingChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Callers -->
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                 <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Top des appelants</h2>
                 <div class="h-64">
@@ -134,7 +141,7 @@
                 </div>
             </div>
 
-            <!-- Tags les plus utilisés -->
+            <!-- Most Used Tags -->
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                 <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Tags les plus utilisés</h2>
                 <div class="h-64">
@@ -144,7 +151,7 @@
         </div>
     </div>
 
-    <!-- Modal d'export -->
+    <!-- Export Modal -->
     <div id="exportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50 hidden">
         <div class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96">
             <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Configuration de l'export</h3>
@@ -164,6 +171,10 @@
                         <label class="flex items-center text-gray-900 dark:text-white">
                             <input type="checkbox" class="mr-2" id="includeGLPI" checked>
                             Tickets GLPI
+                        </label>
+                        <label class="flex items-center text-gray-900 dark:text-white">
+                            <input type="checkbox" class="mr-2" id="includeBlocking" checked>
+                            Tickets Bloquants
                         </label>
                         <label class="flex items-center text-gray-900 dark:text-white">
                             <input type="checkbox" class="mr-2" id="includeTags" checked>
@@ -191,7 +202,6 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script>
         window.initialStats = <%- JSON.stringify(stats) %>;
     </script>

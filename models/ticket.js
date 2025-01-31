@@ -27,6 +27,10 @@ module.exports = (sequelize) => {
             type: DataTypes.BOOLEAN,
             defaultValue: false
         },
+        isBlocking: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
         isArchived: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
@@ -52,7 +56,8 @@ module.exports = (sequelize) => {
             allowNull: true
         }
     }, {
-        timestamps: true
+        timestamps: true,
+        tableName: 'tickets'
     });
 
     return Ticket;

@@ -1,10 +1,8 @@
-// Variables globales
-let mainChart, glpiChart, callersChart, tagsChart;
+let mainChart, glpiChart, callersChart, tagsChart, blockingChart;
 let currentPeriod = 'day';
 let stats;
 let filteredStats;
 
-// Mise à jour du graphique principal
 function updateMainChart(data) {
     const ctx = document.getElementById('mainChart');
     if (!ctx || !data) return;
@@ -14,7 +12,8 @@ function updateMainChart(data) {
     const chartData = data.labels.map((label, i) => ({
         name: label,
         total: data.data[i] || 0,
-        glpi: data.glpiData[i] || 0
+        glpi: data.glpiData[i] || 0,
+        blocking: data.blockingData[i] || 0
     }));
 
     mainChart = new Chart(ctx, {
@@ -38,6 +37,17 @@ function updateMainChart(data) {
                     data: chartData.map(d => d.glpi),
                     borderColor: 'rgb(139, 92, 246)',
                     backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Tickets Bloquants',
+                    data: chartData.map(d => d.blocking),
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     tension: 0.3,
                     fill: true,
                     pointRadius: 5,
@@ -76,7 +86,6 @@ function updateMainChart(data) {
     });
 }
 
-// Mise à jour du graphique GLPI
 function updateGLPIChart(data) {
     const ctx = document.getElementById('glpiChart');
     if (!ctx || !data) return;
@@ -115,7 +124,44 @@ function updateGLPIChart(data) {
     });
 }
 
-// Mise à jour du graphique des appelants
+function updateBlockingChart(data) {
+    const ctx = document.getElementById('blockingChart');
+    if (!ctx || !data) return;
+
+    if (blockingChart) blockingChart.destroy();
+
+    const totalBlocking = data.blockingData.reduce((a, b) => a + b, 0);
+    const totalNonBlocking = data.data.reduce((a, b) => a + b, 0) - totalBlocking;
+
+    blockingChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Bloquant', 'Non-Bloquant'],
+            datasets: [{
+                data: [totalBlocking, totalNonBlocking],
+                backgroundColor: [
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(34, 197, 94, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(239, 68, 68, 1)',
+                    'rgba(34, 197, 94, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
 function updateCallersChart(topCallers) {
     const ctx = document.getElementById('callersChart');
     if (!ctx) return;
@@ -154,7 +200,6 @@ function updateCallersChart(topCallers) {
     });
 }
 
-// Mise à jour du graphique des tags
 function updateTagsChart(topTags) {
     const ctx = document.getElementById('tagsChart');
     if (!ctx) return;
@@ -193,7 +238,6 @@ function updateTagsChart(topTags) {
     });
 }
 
-// Calcul des tops basé sur les données filtrées
 function updateTopCharts() {
     const callerStats = {};
     const tagStats = {};
@@ -225,27 +269,26 @@ function updateTopCharts() {
     updateTagsChart(topTags);
 }
 
-// Mise à jour des statistiques affichées
 function updateStats(data) {
     document.getElementById('totalTickets').textContent = data.data.reduce((a, b) => a + b, 0);
     document.getElementById('totalGLPI').textContent = data.glpiData.reduce((a, b) => a + b, 0);
+    document.getElementById('totalBlocking').textContent = data.blockingData.reduce((a, b) => a + b, 0);
     const total = data.data.reduce((a, b) => a + b, 0);
     const days = data.data.filter(x => x > 0).length || 1;
     document.getElementById('avgTicketsPerDay').textContent = (total / days).toFixed(1);
 }
 
-// Mise à jour de tous les graphiques
 function updateAllCharts() {
     const data = filteredStats[currentPeriod];
     if (!data) return;
     
     updateMainChart(data);
     updateGLPIChart(data);
+    updateBlockingChart(data);
     updateTopCharts();
     updateStats(data);
 }
 
-// Filtrage des données par date
 function filterDataByDate() {
     const startDate = new Date(document.getElementById('startDate').value);
     const endDate = new Date(document.getElementById('endDate').value);
@@ -256,13 +299,13 @@ function filterDataByDate() {
         return;
     }
 
-    // Filtrer les données détaillées
     filteredStats = {
         ...stats,
         [currentPeriod]: {
             labels: [],
             data: [],
-            glpiData: []
+            glpiData: [],
+            blockingData: []
         },
         detailedData: stats.detailedData.filter(ticket => {
             const ticketDate = new Date(ticket.date);
@@ -270,7 +313,6 @@ function filterDataByDate() {
         })
     };
 
-    // Filtrer les données de la période
     stats[currentPeriod].labels.forEach((label, index) => {
         let date;
         let isInRange = false;
@@ -293,37 +335,35 @@ function filterDataByDate() {
             filteredStats[currentPeriod].labels.push(label);
             filteredStats[currentPeriod].data.push(stats[currentPeriod].data[index]);
             filteredStats[currentPeriod].glpiData.push(stats[currentPeriod].glpiData[index]);
+            filteredStats[currentPeriod].blockingData.push(stats[currentPeriod].blockingData[index]);
         }
     });
 
-    // Calculer les totaux
     filteredStats[currentPeriod].total = filteredStats[currentPeriod].data.reduce((a, b) => a + b, 0);
     filteredStats[currentPeriod].glpi = filteredStats[currentPeriod].glpiData.reduce((a, b) => a + b, 0);
+    filteredStats[currentPeriod].blocking = filteredStats[currentPeriod].blockingData.reduce((a, b) => a + b, 0);
 
     updateAllCharts();
 }
 
-// Mise à jour de la période sélectionnée
 function updatePeriod(period) {
     currentPeriod = period;
     const now = new Date();
 
-    // Mettre à jour les boutons
     ['day', 'week', 'month'].forEach(p => {
         const btn = document.getElementById(`btn${p.charAt(0).toUpperCase() + p.slice(1)}`);
         if (btn) {
-            btn.classList.remove('bg-blue-500', 'text-white');
-            btn.classList.add('bg-gray-200', 'hover:bg-gray-300');
+            btn.classList.remove('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
+            btn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
         }
     });
 
     const selectedBtn = document.getElementById(`btn${period.charAt(0).toUpperCase() + period.slice(1)}`);
     if (selectedBtn) {
-        selectedBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300');
-        selectedBtn.classList.add('bg-blue-500', 'text-white');
+        selectedBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
+        selectedBtn.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
     }
 
-    // Calculer les dates par défaut pour la période
     let startDate = new Date(now);
     const endDate = new Date(now);
 
@@ -345,7 +385,6 @@ function updatePeriod(period) {
     filterDataByDate();
 }
 
-// Gestion des exports
 function openExportModal() {
     document.getElementById('exportModal').classList.remove('hidden');
 }
@@ -361,8 +400,9 @@ function handleExport(event) {
     const includeGLPI = document.getElementById('includeGLPI').checked;
     const includeTags = document.getElementById('includeTags').checked;
     const includeCallers = document.getElementById('includeCallers').checked;
+    const includeBlocking = document.getElementById('includeBlocking').checked;
 
-    if (!period || (!includeGLPI && !includeTags && !includeCallers)) {
+    if (!period || (!includeGLPI && !includeTags && !includeCallers && !includeBlocking)) {
         alert("Veuillez sélectionner au moins une option d'export.");
         return;
     }
@@ -372,6 +412,7 @@ function handleExport(event) {
         includeGLPI,
         includeTags,
         includeCallers,
+        includeBlocking,
         startDate: document.getElementById('startDate').value,
         endDate: document.getElementById('endDate').value
     });
@@ -385,21 +426,53 @@ function handleExport(event) {
     }, 1000);
 }
 
-// Initialisation des statistiques
 function initializeStats(data) {
     if (!data) {
         console.error("Aucune donnée statistique fournie.");
         return;
     }
-    stats = data;
+
+    // Ajout des données de tickets bloquants aux statistiques existantes
+    stats = {
+        ...data,
+        day: {
+            ...data.day,
+            blockingData: data.detailedData
+                .filter(ticket => ticket.isBlocking)
+                .reduce((acc, ticket) => {
+                    const date = new Date(ticket.date).toLocaleDateString('fr-FR');
+                    const index = data.day.labels.indexOf(date);
+                    if (index !== -1) {
+                        acc[index] = (acc[index] || 0) + 1;
+                    }
+                    return acc;
+                }, Array(data.day.labels.length).fill(0))
+        },
+        week: {
+            ...data.week,
+            blockingData: Array(data.week.labels.length).fill(0)  // À implémenter selon la logique hebdomadaire
+        },
+        month: {
+            ...data.month,
+            blockingData: Array(data.month.labels.length).fill(0)  // À implémenter selon la logique mensuelle
+        }
+    };
+
     filteredStats = { ...stats };
     updateAllCharts();
     updatePeriod('day');
 }
 
-// Initialisation au chargement de la page
+// Chargement des statistiques au démarrage
 document.addEventListener('DOMContentLoaded', function() {
     if (window.initialStats) {
         initializeStats(window.initialStats);
+    }
+
+    // Gestion du thème sombre pour les graphiques
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    if (isDarkMode) {
+        Chart.defaults.color = '#ffffff';
+        Chart.defaults.borderColor = '#374151';
     }
 });
