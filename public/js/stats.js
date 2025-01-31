@@ -385,47 +385,6 @@ function updatePeriod(period) {
     filterDataByDate();
 }
 
-function openExportModal() {
-    document.getElementById('exportModal').classList.remove('hidden');
-}
-
-function closeExportModal() {
-    document.getElementById('exportModal').classList.add('hidden');
-}
-
-function handleExport(event) {
-    event.preventDefault();
-    
-    const period = document.getElementById('exportPeriod').value;
-    const includeGLPI = document.getElementById('includeGLPI').checked;
-    const includeTags = document.getElementById('includeTags').checked;
-    const includeCallers = document.getElementById('includeCallers').checked;
-    const includeBlocking = document.getElementById('includeBlocking').checked;
-
-    if (!period || (!includeGLPI && !includeTags && !includeCallers && !includeBlocking)) {
-        alert("Veuillez sélectionner au moins une option d'export.");
-        return;
-    }
-
-    const queryParams = new URLSearchParams({
-        period,
-        includeGLPI,
-        includeTags,
-        includeCallers,
-        includeBlocking,
-        startDate: document.getElementById('startDate').value,
-        endDate: document.getElementById('endDate').value
-    });
-
-    document.getElementById('loading').classList.remove('hidden');
-    window.location.href = `/api/stats/export?${queryParams}`;
-
-    setTimeout(() => {
-        closeExportModal();
-        document.getElementById('loading').classList.add('hidden');
-    }, 1000);
-}
-
 function initializeStats(data) {
     if (!data) {
         console.error("Aucune donnée statistique fournie.");
