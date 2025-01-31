@@ -32,7 +32,7 @@
 ### Chart.js
 - **Rôle** : Bibliothèque de graphiques
 - **Pourquoi** : API simple, responsive, personnalisable
-- **Usage** : Visualisations statistiques
+- **Usage** : Visualisations des statistiques et générer des rapport
 
 ## Outils et Utilitaires
 
