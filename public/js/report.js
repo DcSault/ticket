@@ -49,7 +49,7 @@ async function updateReport() {
     }
 }
 
-// Mise à jour de tous les graphiques
+// Mise à jour de tous les graphiques et statistiques
 function updateCharts(data) {
     console.log('Mise à jour des graphiques avec:', data);
 
@@ -79,6 +79,7 @@ function updateCharts(data) {
     }
 }
 
+// Mise à jour du graphique d'évolution
 function updateEvolutionChart(data) {
     const ctx = document.getElementById('evolutionChart');
     if (!ctx) return;
@@ -92,7 +93,7 @@ function updateEvolutionChart(data) {
         data: {
             labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`),
             datasets: [{
-                label: 'Tickets',
+                label: 'Appels',
                 data: data.hourlyDistribution,
                 borderColor: 'rgb(59, 130, 246)',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -101,13 +102,13 @@ function updateEvolutionChart(data) {
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     position: 'top'
                 }
             },
-            responsive: true,
-            maintainAspectRatio: false,
             scales: {
                 y: {
                     beginAtZero: true,
@@ -120,6 +121,7 @@ function updateEvolutionChart(data) {
     });
 }
 
+// Mise à jour du graphique GLPI
 function updateGLPIChart(data) {
     const ctx = document.getElementById('glpiChart');
     if (!ctx) return;
@@ -153,6 +155,7 @@ function updateGLPIChart(data) {
     });
 }
 
+// Mise à jour du graphique des Appels bloquants
 function updateBlockingChart(data) {
     const ctx = document.getElementById('blockingChart');
     if (!ctx) return;
@@ -186,6 +189,7 @@ function updateBlockingChart(data) {
     });
 }
 
+// Mise à jour du graphique de distribution horaire
 function updateHourlyChart(data) {
     const ctx = document.getElementById('hourlyChart');
     if (!ctx) return;
@@ -199,7 +203,7 @@ function updateHourlyChart(data) {
         data: {
             labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`),
             datasets: [{
-                label: 'Tickets par heure',
+                label: 'Appels par heure',
                 data: data.hourlyDistribution,
                 backgroundColor: 'rgba(59, 130, 246, 0.8)'
             }]
@@ -219,6 +223,7 @@ function updateHourlyChart(data) {
     });
 }
 
+// Mise à jour du graphique des appelants
 function updateCallersChart(topCallers) {
     const ctx = document.getElementById('callersChart');
     if (!ctx) return;
@@ -236,7 +241,7 @@ function updateCallersChart(topCallers) {
         data: {
             labels: callerData.map(([name]) => name),
             datasets: [{
-                label: 'Tickets',
+                label: 'Appels',
                 data: callerData.map(([, count]) => count),
                 backgroundColor: 'rgba(59, 130, 246, 0.8)'
             }]
@@ -254,6 +259,7 @@ function updateCallersChart(topCallers) {
     });
 }
 
+// Mise à jour du graphique des tags
 function updateTagsChart(topTags) {
     const ctx = document.getElementById('tagsChart');
     if (!ctx) return;
@@ -294,57 +300,166 @@ async function generateReport() {
     try {
         const date = document.getElementById('reportDate').value;
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        // Titre du rapport
-        doc.setFontSize(20);
-        doc.text(`Rapport des tickets - ${new Date(date).toLocaleDateString('fr-FR')}`, 20, 20);
-
-        // Capture des graphiques
-        let yPosition = 40;
         
-        // Statistiques générales
-        doc.setFontSize(14);
-        doc.text('Statistiques Générales:', 20, yPosition);
-        doc.setFontSize(12);
-        doc.text(`Total des tickets: ${document.getElementById('totalTickets').textContent}`, 20, yPosition + 10);
-        doc.text(`Ratio Matin: ${document.getElementById('morningRatio').textContent}`, 20, yPosition + 20);
-        doc.text(`Ratio Après-midi: ${document.getElementById('afternoonRatio').textContent}`, 20, yPosition + 30);
-        doc.text(`Heure la plus active: ${document.getElementById('peakHour').textContent}`, 20, yPosition + 40);
+        // Création du PDF en format paysage
+        const doc = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        });
 
-        yPosition += 60;
+        // Styles
+        const styles = {
+            title: { fontSize: 24, color: [0, 0, 0] },
+            subtitle: { fontSize: 14, color: [51, 51, 51] },
+            text: { fontSize: 12, color: [68, 68, 68] }
+        };
 
-        // Capture des graphiques
-        const charts = [
-            { id: 'evolutionChart', title: 'Évolution des tickets' },
-            { id: 'glpiChart', title: 'Répartition GLPI' },
-            { id: 'blockingChart', title: 'Répartition Bloquant' },
-            { id: 'hourlyChart', title: 'Distribution horaire' },
-            { id: 'callersChart', title: 'Top des appelants' },
-            { id: 'tagsChart', title: 'Tags les plus utilisés' }
+        // Dimensions de la page
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+
+        // Entête
+        doc.setFontSize(styles.title.fontSize);
+        doc.setTextColor(...styles.title.color);
+        doc.text(`Rapport des Appels - ${new Date(date).toLocaleDateString('fr-FR')}`, 15, 20);
+
+        // Cartes de statistiques
+        const statsStartY = 35;
+        const cardWidth = 65;
+        const cardHeight = 30;
+        const margin = 10;
+
+        // Fonction pour dessiner une carte de statistique
+        function drawStatsCard(title, value, x, y, color) {
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'F');
+            
+            doc.setFontSize(12);
+            doc.setTextColor(...styles.text.color);
+            doc.text(title, x + 5, y + 10);
+            
+            doc.setFontSize(20);
+            doc.setTextColor(...color);
+            doc.text(value, x + 5, y + 25);
+        }
+
+        // Dessiner les cartes de statistiques
+        const stats = [
+            {
+                title: 'Total Appels',
+                value: document.getElementById('totalTickets').textContent,
+                color: [59, 130, 246]
+            },
+            {
+                title: 'Ratio Matin',
+                value: document.getElementById('morningRatio').textContent,
+                color: [34, 197, 94]
+            },
+            {
+                title: 'Ratio Après-midi',
+                value: document.getElementById('afternoonRatio').textContent,
+                color: [234, 179, 8]
+            },
+            {
+                title: 'Heure de pointe',
+                value: document.getElementById('peakHour').textContent,
+                color: [147, 51, 234]
+            }
         ];
 
-        for (const chart of charts) {
+        stats.forEach((stat, index) => {
+            const x = 15 + (cardWidth + margin) * index;
+            drawStatsCard(stat.title, stat.value, x, statsStartY, stat.color);
+        });
+
+        // Configuration des graphiques
+        const chartsStartY = statsStartY + cardHeight + 15;
+        
+        const charts = [
+            {
+                id: 'evolutionChart',
+                title: 'Évolution des Appels',
+                width: 270,
+                height: 60,
+                x: 15,
+                y: chartsStartY
+            },
+            {
+                id: 'hourlyChart',
+                title: 'Distribution horaire',
+                width: 270,
+                height: 50,
+                x: 15,
+                y: chartsStartY + 160
+            },
+            {
+                id: 'callersChart',
+                title: 'Top des appelants',
+                width: 100, // Réduire la largeur
+                height: 40, // Réduire la hauteur
+                x: 15,
+                y: chartsStartY + 70
+            },
+            {
+                id: 'tagsChart',
+                title: 'Tags les plus utilisés',
+                width: 100, // Réduire la largeur
+                height: 40, // Réduire la hauteur
+                x: 155,
+                y: chartsStartY + 70
+            }
+        ];
+
+        // Fonction pour ajouter un graphique
+        async function addChart(chart) {
+            doc.setFontSize(styles.subtitle.fontSize);
+            doc.setTextColor(...styles.subtitle.color);
+            doc.text(chart.title, chart.x, chart.y - 5);
+
             const canvas = document.getElementById(chart.id);
             if (canvas) {
-                // Nouvelle page si nécessaire
-                if (yPosition > 250) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-
-                doc.setFontSize(14);
-                doc.text(chart.title, 20, yPosition);
-                
-                const imgData = canvas.toDataURL('image/png');
-                doc.addImage(imgData, 'PNG', 20, yPosition + 10, 170, 80);
-                
-                yPosition += 100;
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                doc.addImage(imgData, 'PNG', chart.x, chart.y, chart.width, chart.height);
             }
         }
 
+        // Ajouter tous les graphiques de la première page
+        for (const chart of charts) {
+            await addChart(chart);
+        }
+
+        // Ajouter une nouvelle page pour les graphiques GLPI et Bloquant
+        doc.addPage();
+
+        // Réinitialiser la position Y pour la nouvelle page
+        const newPageStartY = 20;
+
+        // Ajouter les graphiques GLPI et Bloquant sur la nouvelle page
+        const glpiChart = {
+            id: 'glpiChart',
+            title: 'Répartition GLPI',
+            width: 120,
+            height: 120,
+            x: 15,
+            y: newPageStartY
+        };
+
+        const blockingChart = {
+            id: 'blockingChart',
+            title: 'Répartition Bloquant',
+            width: 120,
+            height: 120,
+            x: 150,
+            y: newPageStartY
+        };
+
+        await addChart(glpiChart);
+        await addChart(blockingChart);
+
         // Sauvegarde du PDF
-        doc.save(`rapport_tickets_${date}.pdf`);
+        const formattedDate = new Date(date).toLocaleDateString('fr-FR').replace(/\//g, '-');
+        doc.save(`rapport_Appels_${formattedDate}.pdf`);
 
     } catch (error) {
         console.error('Erreur lors de la génération du PDF:', error);
@@ -352,43 +467,186 @@ async function generateReport() {
     }
 }
 
+// Fonction pour créer un titre dans le PDF
+function drawPDFTitle(doc, text, x, y) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text(text, x, y);
+    doc.setFont('helvetica', 'normal');
+}
+
+// Fonction pour créer une section dans le PDF
+function drawPDFSection(doc, title, data, x, y, width) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(title, x, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    
+    let currentY = y + 10;
+    Object.entries(data).forEach(([key, value]) => {
+        const text = `${key}: ${value}`;
+        doc.text(text, x, currentY);
+        currentY += 7;
+    });
+    return currentY;
+}
+
+// Fonction pour dessiner un graphique dans le PDF
+async function drawPDFChart(doc, canvasId, title, x, y, width, height) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return y;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(title, x, y);
+    
+    const imageData = canvas.toDataURL('image/png', 1.0);
+    doc.addImage(imageData, 'PNG', x, y + 5, width, height);
+    
+    return y + height + 20;
+}
+
+// Fonction pour convertir le format de date
+function formatDate(date) {
+    return new Date(date).toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// Fonction pour formater les nombres
+function formatNumber(number) {
+    return new Intl.NumberFormat('fr-FR').format(number);
+}
+
+// Fonction pour obtenir une couleur basée sur une valeur
+function getColorForValue(value, max) {
+    const ratio = value / max;
+    const hue = (1 - ratio) * 120; // 120 pour vert, 0 pour rouge
+    return `hsl(${hue}, 70%, 50%)`;
+}
+
+// Fonction pour générer le markdown du rapport
 async function generateMarkdownReport(data) {
     const date = document.getElementById('reportDate').value;
-    const formattedDate = new Date(date).toLocaleDateString('fr-FR');
-
-    return `# Rapport des tickets - ${formattedDate}
+    const formattedDate = formatDate(date);
+    
+    let markdown = `# Rapport des Appels - ${formattedDate}
 
 ## Résumé
-- Total des tickets: ${data.total}
-- Tickets GLPI: ${data.glpi}
-- Tickets bloquants: ${data.blocking}
-- Ratio matin/après-midi: ${data.morningTickets}/${data.afternoonTickets}
 
-## Distribution horaire
-${data.hourlyDistribution.map((count, hour) => 
-    `- ${String(hour).padStart(2, '0')}:00 : ${count} ticket(s)`
-).join('\n')}
+- **Total des Appels**: ${formatNumber(data.total)}
+- **Appels GLPI**: ${formatNumber(data.glpi)} (${Math.round(data.glpi/data.total*100 || 0)}%)
+- **Appels bloquants**: ${formatNumber(data.blocking)} (${Math.round(data.blocking/data.total*100 || 0)}%)
+- **Ratio Matin/Après-midi**: ${formatNumber(data.morningTickets)}/${formatNumber(data.afternoonTickets)}
 
-## Top appelants
+## Distribution Horaire
+
+\`\`\`
+${generateHourlyDistributionAscii(data.hourlyDistribution)}
+\`\`\`
+
+## Top Appelants
+
 ${Object.entries(data.topCallers)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([name, count]) => `- ${name}: ${count} ticket(s)`)
+    .map((caller, index) => `${index + 1}. ${caller[0]}: ${formatNumber(caller[1])} ticket(s)`)
     .join('\n')}
 
-## Tags les plus utilisés
+## Tags les Plus Utilisés
+
 ${Object.entries(data.topTags)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([tag, count]) => `- ${tag}: ${count} utilisation(s)`)
-    .join('\n')}`;
+    .map((tag, index) => `${index + 1}. ${tag[0]}: ${formatNumber(tag[1])} utilisation(s)`)
+    .join('\n')}
+`;
+
+    return markdown;
 }
 
-function downloadPDF(pdfContent, filename) {
-    const element = document.createElement('a');
-    element.href = pdfContent;
-    element.download = filename;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+// Fonction pour générer une représentation ASCII de la distribution horaire
+function generateHourlyDistributionAscii(distribution) {
+    const maxValue = Math.max(...distribution);
+    const height = 5;
+    let ascii = '';
+
+    for (let row = height; row >= 0; row--) {
+        for (let hour = 0; hour < 24; hour++) {
+            const value = distribution[hour];
+            const threshold = (maxValue / height) * row;
+            ascii += value >= threshold ? '█' : ' ';
+        }
+        ascii += '\n';
+    }
+
+    // Ajouter l'axe des heures
+    ascii += '0----6----12---18---23\n';
+
+    return ascii;
 }
+
+// Fonction pour exporter les données au format CSV
+function exportToCSV(data) {
+    const rows = [
+        ['Heure', 'Nombre de Appels'],
+        ...data.hourlyDistribution.map((value, index) => [
+            `${String(index).padStart(2, '0')}:00`,
+            value
+        ])
+    ];
+
+    const csvContent = rows
+        .map(row => row.join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'distribution_horaire.csv';
+    link.click();
+}
+
+// Fonction pour initialiser les tooltips
+function initTooltips() {
+    const tooltips = document.querySelectorAll('[data-tooltip]');
+    tooltips.forEach(element => {
+        element.addEventListener('mouseover', e => {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
+            tooltip.textContent = element.dataset.tooltip;
+            document.body.appendChild(tooltip);
+            
+            const rect = element.getBoundingClientRect();
+            tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`;
+            tooltip.style.left = `${rect.left + (rect.width - tooltip.offsetWidth) / 2}px`;
+        });
+
+        element.addEventListener('mouseout', () => {
+            document.querySelectorAll('.tooltip').forEach(t => t.remove());
+        });
+    });
+}
+
+// Initialisation des écouteurs d'événements au chargement de la page
+document.addEventListener('DOMContentLoaded', () => {
+    initTooltips();
+    
+    // Réinitialiser les filtres
+    document.getElementById('resetFilters')?.addEventListener('click', () => {
+        document.getElementById('reportDate').valueAsDate = new Date();
+        updateReport();
+    });
+    
+    // Gérer l'exportation
+    document.getElementById('exportCSV')?.addEventListener('click', () => {
+        const date = document.getElementById('reportDate').value;
+        fetch(`/api/report-data?date=${date}`)
+            .then(response => response.json())
+            .then(data => exportToCSV(data))
+            .catch(error => console.error('Erreur lors de l\'exportation:', error));
+    });
+});
