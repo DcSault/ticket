@@ -406,6 +406,127 @@ app.get('/stats', async (req, res) => {
     }
 });
 
+// Route pour afficher la page de rapport
+app.get('/report', async (req, res) => {
+    try {
+        const defaultDate = new Date();
+        const tickets = await Ticket.findAll({
+            include: [Message],
+            where: {
+                createdAt: {
+                    [Op.gte]: new Date(defaultDate.setHours(0, 0, 0, 0)),
+                    [Op.lte]: new Date(defaultDate.setHours(23, 59, 59, 999))
+                }
+            },
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.render('report', { 
+            tickets, 
+            username: 'Visiteur', // Valeur par défaut pour les visiteurs
+            currentDate: defaultDate
+        });
+    } catch (error) {
+        console.error('Erreur génération rapport:', error);
+        res.status(500).send('Erreur serveur');
+    }
+});
+
+// Route API pour générer les données du rapport
+app.get('/api/report-data', async (req, res) => {
+    try {
+        const requestDate = req.query.date ? new Date(req.query.date) : new Date();
+        const startDate = new Date(requestDate);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(requestDate);
+        endDate.setHours(23, 59, 59, 999);
+
+        console.log('Date demandée:', requestDate);
+        console.log('Plage de recherche:', {startDate, endDate});
+
+        const tickets = await Ticket.findAll({
+            where: {
+                createdAt: {
+                    [Op.between]: [startDate, endDate]
+                }
+            },
+            logging: console.log // Active le logging SQL
+        });
+
+        console.log('Requête SQL exécutée');
+        console.log('Tickets trouvés:', tickets.length);
+        console.log('Premier ticket:', tickets[0]); // Voir le format des données
+
+        // Vérifier s'il y a des tickets
+        if (tickets.length === 0) {
+            console.log('Aucun ticket trouvé pour cette date');
+            // Retourner des données vides mais structurées
+            return res.json({
+                total: 0,
+                glpi: 0,
+                blocking: 0,
+                hourlyDistribution: Array(24).fill(0),
+                morningTickets: 0,
+                afternoonTickets: 0,
+                topCallers: {},
+                topTags: {},
+                debug: {
+                    requestDate: requestDate,
+                    startDate: startDate,
+                    endDate: endDate
+                }
+            });
+        }
+
+        // Traitement des tickets existants
+        const stats = {
+            total: tickets.length,
+            glpi: tickets.filter(t => t.isGLPI).length,
+            blocking: tickets.filter(t => t.isBlocking).length,
+            hourlyDistribution: Array(24).fill(0),
+            morningTickets: 0,
+            afternoonTickets: 0,
+            topCallers: {},
+            topTags: {}
+        };
+
+        tickets.forEach(ticket => {
+            const ticketDate = new Date(ticket.createdAt);
+            const hour = ticketDate.getHours();
+            
+            console.log('Traitement ticket:', {
+                id: ticket.id,
+                date: ticket.createdAt,
+                hour: hour
+            });
+
+            stats.hourlyDistribution[hour]++;
+
+            if (hour < 12) stats.morningTickets++;
+            else stats.afternoonTickets++;
+
+            stats.topCallers[ticket.caller] = (stats.topCallers[ticket.caller] || 0) + 1;
+
+            if (ticket.tags && Array.isArray(ticket.tags)) {
+                ticket.tags.forEach(tag => {
+                    stats.topTags[tag] = (stats.topTags[tag] || 0) + 1;
+                });
+            }
+        });
+
+        console.log('Statistiques générées:', stats);
+
+        res.json(stats);
+    } catch (error) {
+        console.error('Erreur complète:', error);
+        res.status(500).json({
+            error: 'Erreur serveur',
+            message: error.message,
+            stack: error.stack
+        });
+    }
+});
+
 app.get('/api/report', async (req, res) => {
     const date = new Date(req.query.date);
     const stats = await getReportStats(date);
