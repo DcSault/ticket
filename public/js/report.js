@@ -188,7 +188,6 @@ function updateBlockingChart(data) {
         }
     });
 }
-
 // Mise à jour du graphique de distribution horaire
 function updateHourlyChart(data) {
     const ctx = document.getElementById('hourlyChart');
@@ -300,6 +299,7 @@ async function generateReport() {
     try {
         const date = document.getElementById('reportDate').value;
         const { jsPDF } = window.jspdf;
+        const data = await fetchReportData(date);
         
         // Création du PDF en format paysage
         const doc = new jsPDF({
@@ -373,7 +373,7 @@ async function generateReport() {
             drawStatsCard(stat.title, stat.value, x, statsStartY, stat.color);
         });
 
-        // Configuration des graphiques
+        // Configuration des graphiques première page
         const chartsStartY = statsStartY + cardHeight + 15;
         
         const charts = [
@@ -396,16 +396,16 @@ async function generateReport() {
             {
                 id: 'callersChart',
                 title: 'Top des appelants',
-                width: 100, // Réduire la largeur
-                height: 40, // Réduire la hauteur
+                width: 100,
+                height: 40,
                 x: 15,
                 y: chartsStartY + 70
             },
             {
                 id: 'tagsChart',
                 title: 'Tags les plus utilisés',
-                width: 100, // Réduire la largeur
-                height: 40, // Réduire la hauteur
+                width: 100,
+                height: 40,
                 x: 155,
                 y: chartsStartY + 70
             }
@@ -429,33 +429,65 @@ async function generateReport() {
             await addChart(chart);
         }
 
-        // Ajouter une nouvelle page pour les graphiques GLPI et Bloquant
+        // Ajouter une nouvelle page
         doc.addPage();
 
         // Réinitialiser la position Y pour la nouvelle page
         const newPageStartY = 20;
 
-        // Ajouter les graphiques GLPI et Bloquant sur la nouvelle page
+        // Ajouter les graphiques GLPI et Bloquant sur la nouvelle page avec leurs statistiques
         const glpiChart = {
             id: 'glpiChart',
             title: 'Répartition GLPI',
-            width: 120,
-            height: 120,
-            x: 15,
+            width: 80,
+            height: 80,
+            x: 30,
             y: newPageStartY
         };
 
         const blockingChart = {
             id: 'blockingChart',
             title: 'Répartition Bloquant',
-            width: 120,
-            height: 120,
-            x: 150,
+            width: 80,
+            height: 80,
+            x: 160,
             y: newPageStartY
         };
 
         await addChart(glpiChart);
         await addChart(blockingChart);
+
+        // Ajouter les statistiques sous les graphiques
+        const statsY = newPageStartY + 90;
+        
+        // Statistiques GLPI
+        doc.setFontSize(12);
+        doc.setTextColor(68, 68, 68);
+        const glpiPercentage = (data.glpi / data.total * 100).toFixed(1);
+        doc.text([
+            `Total tickets GLPI: ${data.glpi}`,
+            `Pourcentage: ${glpiPercentage}%`,
+            `Non-GLPI: ${data.total - data.glpi}`,
+        ], 30, statsY, { align: 'left' });
+
+        // Statistiques Bloquant
+        const blockingPercentage = (data.blocking / data.total * 100).toFixed(1);
+        doc.text([
+            `Total tickets bloquants: ${data.blocking}`,
+            `Pourcentage: ${blockingPercentage}%`,
+            `Non-bloquants: ${data.total - data.blocking}`,
+        ], 160, statsY, { align: 'left' });
+        
+        // Ligne de séparation
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, statsY + 20, pageWidth - 15, statsY + 20);
+
+        // Notes additionnelles
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        const notes = [
+        ];
+        doc.text(notes, 15, statsY + 35);
 
         // Sauvegarde du PDF
         const formattedDate = new Date(date).toLocaleDateString('fr-FR').replace(/\//g, '-');
@@ -467,148 +499,34 @@ async function generateReport() {
     }
 }
 
-// Fonction pour créer un titre dans le PDF
-function drawPDFTitle(doc, text, x, y) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text(text, x, y);
-    doc.setFont('helvetica', 'normal');
-}
-
-// Fonction pour créer une section dans le PDF
-function drawPDFSection(doc, title, data, x, y, width) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(title, x, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    
-    let currentY = y + 10;
-    Object.entries(data).forEach(([key, value]) => {
-        const text = `${key}: ${value}`;
-        doc.text(text, x, currentY);
-        currentY += 7;
-    });
-    return currentY;
-}
-
-// Fonction pour dessiner un graphique dans le PDF
-async function drawPDFChart(doc, canvasId, title, x, y, width, height) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return y;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(title, x, y);
-    
-    const imageData = canvas.toDataURL('image/png', 1.0);
-    doc.addImage(imageData, 'PNG', x, y + 5, width, height);
-    
-    return y + height + 20;
-}
-
-// Fonction pour convertir le format de date
-function formatDate(date) {
-    return new Date(date).toLocaleDateString('fr-FR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-}
-
-// Fonction pour formater les nombres
-function formatNumber(number) {
-    return new Intl.NumberFormat('fr-FR').format(number);
-}
-
-// Fonction pour obtenir une couleur basée sur une valeur
-function getColorForValue(value, max) {
-    const ratio = value / max;
-    const hue = (1 - ratio) * 120; // 120 pour vert, 0 pour rouge
-    return `hsl(${hue}, 70%, 50%)`;
-}
-
-// Fonction pour générer le markdown du rapport
-async function generateMarkdownReport(data) {
-    const date = document.getElementById('reportDate').value;
-    const formattedDate = formatDate(date);
-    
-    let markdown = `# Rapport des Appels - ${formattedDate}
-
-## Résumé
-
-- **Total des Appels**: ${formatNumber(data.total)}
-- **Appels GLPI**: ${formatNumber(data.glpi)} (${Math.round(data.glpi/data.total*100 || 0)}%)
-- **Appels bloquants**: ${formatNumber(data.blocking)} (${Math.round(data.blocking/data.total*100 || 0)}%)
-- **Ratio Matin/Après-midi**: ${formatNumber(data.morningTickets)}/${formatNumber(data.afternoonTickets)}
-
-## Distribution Horaire
-
-\`\`\`
-${generateHourlyDistributionAscii(data.hourlyDistribution)}
-\`\`\`
-
-## Top Appelants
-
-${Object.entries(data.topCallers)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map((caller, index) => `${index + 1}. ${caller[0]}: ${formatNumber(caller[1])} ticket(s)`)
-    .join('\n')}
-
-## Tags les Plus Utilisés
-
-${Object.entries(data.topTags)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map((tag, index) => `${index + 1}. ${tag[0]}: ${formatNumber(tag[1])} utilisation(s)`)
-    .join('\n')}
-`;
-
-    return markdown;
-}
-
-// Fonction pour générer une représentation ASCII de la distribution horaire
-function generateHourlyDistributionAscii(distribution) {
-    const maxValue = Math.max(...distribution);
-    const height = 5;
-    let ascii = '';
-
-    for (let row = height; row >= 0; row--) {
-        for (let hour = 0; hour < 24; hour++) {
-            const value = distribution[hour];
-            const threshold = (maxValue / height) * row;
-            ascii += value >= threshold ? '█' : ' ';
-        }
-        ascii += '\n';
+// Fonction utilitaire pour récupérer les données du rapport
+async function fetchReportData(date) {
+    const response = await fetch(`/api/report-data?date=${date}`);
+    if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
     }
-
-    // Ajouter l'axe des heures
-    ascii += '0----6----12---18---23\n';
-
-    return ascii;
+    return await response.json();
 }
 
-// Fonction pour exporter les données au format CSV
-function exportToCSV(data) {
-    const rows = [
-        ['Heure', 'Nombre de Appels'],
-        ...data.hourlyDistribution.map((value, index) => [
-            `${String(index).padStart(2, '0')}:00`,
-            value
-        ])
-    ];
-
-    const csvContent = rows
-        .map(row => row.join(','))
-        .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'distribution_horaire.csv';
-    link.click();
-}
+// Initialisation des écouteurs d'événements
+document.addEventListener('DOMContentLoaded', () => {
+    initTooltips();
+    
+    // Réinitialiser les filtres
+    document.getElementById('resetFilters')?.addEventListener('click', () => {
+        document.getElementById('reportDate').valueAsDate = new Date();
+        updateReport();
+    });
+    
+    // Gérer l'exportation
+    document.getElementById('exportCSV')?.addEventListener('click', () => {
+        const date = document.getElementById('reportDate').value;
+        fetch(`/api/report-data?date=${date}`)
+            .then(response => response.json())
+            .then(data => exportToCSV(data))
+            .catch(error => console.error('Erreur lors de l\'exportation:', error));
+    });
+});
 
 // Fonction pour initialiser les tooltips
 function initTooltips() {
@@ -630,23 +548,3 @@ function initTooltips() {
         });
     });
 }
-
-// Initialisation des écouteurs d'événements au chargement de la page
-document.addEventListener('DOMContentLoaded', () => {
-    initTooltips();
-    
-    // Réinitialiser les filtres
-    document.getElementById('resetFilters')?.addEventListener('click', () => {
-        document.getElementById('reportDate').valueAsDate = new Date();
-        updateReport();
-    });
-    
-    // Gérer l'exportation
-    document.getElementById('exportCSV')?.addEventListener('click', () => {
-        const date = document.getElementById('reportDate').value;
-        fetch(`/api/report-data?date=${date}`)
-            .then(response => response.json())
-            .then(data => exportToCSV(data))
-            .catch(error => console.error('Erreur lors de l\'exportation:', error));
-    });
-});
