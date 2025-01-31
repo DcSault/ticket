@@ -478,20 +478,21 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
 // Fonction pour générer les statistiques
 async function processStats(tickets) {
     const now = new Date();
-    now.setHours(23, 59, 59, 999); // Fin de la journée courante
+    now.setHours(23, 59, 59, 999);
     
     const stats = {
-        day: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
-        week: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
-        month: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
+        day: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        week: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        month: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
         detailedData: []
     };
-
-    // Créer un map pour stocker les compteurs par date
+ 
+    // Create maps for daily counts
     const dailyCounts = new Map();
     const dailyGLPICounts = new Map();
-
-    // Initialiser les 30 derniers jours avec des compteurs à 0
+    const dailyBlockingCounts = new Map();
+ 
+    // Initialize last 30 days
     for (let i = 29; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
@@ -499,44 +500,48 @@ async function processStats(tickets) {
         const dateStr = date.toLocaleDateString('fr-FR');
         dailyCounts.set(dateStr, 0);
         dailyGLPICounts.set(dateStr, 0);
+        dailyBlockingCounts.set(dateStr, 0);
         stats.day.labels.push(dateStr);
     }
-
-    // Traiter chaque ticket
+ 
+    // Process each ticket
     tickets.forEach(ticket => {
         const ticketDate = new Date(ticket.createdAt);
         ticketDate.setHours(0, 0, 0, 0);
         const dateStr = ticketDate.toLocaleDateString('fr-FR');
-
-        // Ajouter aux données détaillées
+ 
         stats.detailedData.push({
             id: ticket.id,
             date: ticket.createdAt,
             caller: ticket.caller,
             tags: ticket.tags,
-            isGLPI: ticket.isGLPI
+            isGLPI: ticket.isGLPI,
+            isBlocking: ticket.isBlocking
         });
-
-        // Compter seulement si la date est dans notre période de 30 jours
+ 
         if (dailyCounts.has(dateStr)) {
             dailyCounts.set(dateStr, (dailyCounts.get(dateStr) || 0) + 1);
             if (ticket.isGLPI) {
                 dailyGLPICounts.set(dateStr, (dailyGLPICounts.get(dateStr) || 0) + 1);
             }
+            if (ticket.isBlocking) {
+                dailyBlockingCounts.set(dateStr, (dailyBlockingCounts.get(dateStr) || 0) + 1);
+            }
         }
     });
-
-    // Remplir les tableaux de données
+ 
+    // Fill day data arrays
     stats.day.labels.forEach(dateStr => {
         stats.day.data.push(dailyCounts.get(dateStr) || 0);
         stats.day.glpiData.push(dailyGLPICounts.get(dateStr) || 0);
+        stats.day.blockingData.push(dailyBlockingCounts.get(dateStr) || 0);
     });
-
-    // Calculer les statistiques hebdomadaires
+ 
+    // Calculate weekly statistics
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1);
     weekStart.setHours(0, 0, 0, 0);
-
+ 
     for (let i = 3; i >= 0; i--) {
         const start = new Date(weekStart);
         start.setDate(start.getDate() - (i * 7));
@@ -553,9 +558,10 @@ async function processStats(tickets) {
         
         stats.week.data.push(weekTickets.length);
         stats.week.glpiData.push(weekTickets.filter(t => t.isGLPI).length);
+        stats.week.blockingData.push(weekTickets.filter(t => t.isBlocking).length);
     }
-
-    // Calculer les statistiques mensuelles
+ 
+    // Calculate monthly statistics
     for (let i = 11; i >= 0; i--) {
         const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
@@ -570,16 +576,18 @@ async function processStats(tickets) {
         
         stats.month.data.push(monthTickets.length);
         stats.month.glpiData.push(monthTickets.filter(t => t.isGLPI).length);
+        stats.month.blockingData.push(monthTickets.filter(t => t.isBlocking).length);
     }
-
-    // Calculer les totaux
+ 
+    // Calculate totals
     ['day', 'week', 'month'].forEach(period => {
         stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
         stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
+        stats[period].blocking = stats[period].blockingData.reduce((a, b) => a + b, 0);
     });
-
+ 
     return stats;
-}
+ }
 
 // Gestion des erreurs globales
 app.use((err, req, res, next) => {
