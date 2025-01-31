@@ -83,7 +83,7 @@
         
         <!-- New Ticket Form -->
         <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
-            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Nouveau Ticket</h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Nouvel Appel</h2>
             <form action="/api/tickets" method="POST" class="space-y-4">
                 <div class="flex items-center gap-4 mb-4">
                     <div class="flex items-center gap-2">
@@ -154,7 +154,7 @@
 
                 <button type="submit" 
                         class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700">
-                    Créer le ticket
+                    Créer l'Appel
                 </button>
             </form>
         </div>
@@ -332,7 +332,7 @@
         }
 
         function archiveTicket(id) {
-            if (confirm('Voulez-vous archiver ce ticket ?')) {
+            if (confirm('Voulez-vous archiver cet appel ?')) {
                 fetch(`/api/tickets/${id}/archive`, {
                     method: 'POST',
                     headers: {
