@@ -613,6 +613,50 @@ app.get('/admin/create-ticket', async (req, res) => {
     }
 });
 
+app.get('/api/report', async (req, res) => {
+    const date = new Date(req.query.date);
+    const stats = await getReportStats(date);
+    res.json(stats);
+  });
+  
+  async function getReportStats(date) {
+    // Statistiques quotidiennes
+    const dayStart = new Date(date);
+    dayStart.setHours(0,0,0,0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23,59,59,999);
+  
+    const tickets = await Ticket.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [dayStart, dayEnd]
+        }
+      }
+    });
+  
+    // Calculer les ratios et tranches horaires
+    const morningTickets = tickets.filter(t => new Date(t.createdAt).getHours() < 12);
+    const afternoonTickets = tickets.filter(t => new Date(t.createdAt).getHours() >= 12);
+  
+    const hourlyDistribution = Array(24).fill(0);
+    tickets.forEach(t => {
+      const hour = new Date(t.createdAt).getHours();
+      hourlyDistribution[hour]++;
+    });
+  
+    return {
+      total: tickets.length,
+      glpi: tickets.filter(t => t.isGLPI).length,
+      blocking: tickets.filter(t => t.isBlocking).length,
+      morningRatio: morningTickets.length / tickets.length,
+      afternoonRatio: afternoonTickets.length / tickets.length,
+      hourlyDistribution,
+      topCallers: getTopCallers(tickets),
+      topTags: getTopTags(tickets),
+      charts: generateChartsSVG(tickets)
+    };
+  }
+
 // Route pour traiter la création du ticket personnalisé (accessible à tous)
 app.post('/admin/create-ticket', async (req, res) => {
     try {

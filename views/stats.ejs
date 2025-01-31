@@ -151,56 +151,80 @@
         </div>
     </div>
 
-    <!-- Export Modal -->
-    <div id="exportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50 hidden">
-        <div class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96">
-            <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Configuration de l'export</h3>
-            <form onsubmit="handleExport(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Période</label>
-                    <select id="exportPeriod" 
-                            class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <option value="day">Par jour</option>
-                        <option value="week">Par semaine</option>
-                        <option value="month">Par mois</option>
-                    </select>
+<!-- Export Modal -->
+<div id="exportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50 hidden">
+    <div class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96">
+        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Configuration de l'export</h3>
+        <form onsubmit="handleExport(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Période</label>
+                <select id="exportPeriod" 
+                        class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="day">Par jour</option>
+                    <option value="week">Par semaine</option>
+                    <option value="month">Par mois</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Format</label>
+                <select id="exportFormat" 
+                        class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="excel">Excel (.xlsx)</option>
+                    <option value="pdf">PDF</option>
+                    <option value="markdown">Markdown (.md)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Inclure</label>
+                <div class="space-y-2">
+                    <label class="flex items-center text-gray-900 dark:text-white">
+                        <input type="checkbox" class="mr-2" id="includeGLPI" checked>
+                        Tickets GLPI
+                    </label>
+                    <label class="flex items-center text-gray-900 dark:text-white">
+                        <input type="checkbox" class="mr-2" id="includeBlocking" checked>
+                        Tickets Bloquants
+                    </label>
+                    <label class="flex items-center text-gray-900 dark:text-white">
+                        <input type="checkbox" class="mr-2" id="includeTags" checked>
+                        Tags
+                    </label>
+                    <label class="flex items-center text-gray-900 dark:text-white">
+                        <input type="checkbox" class="mr-2" id="includeCallers" checked>
+                        Appelants
+                    </label>
+                    <label class="flex items-center text-gray-900 dark:text-white">
+                        <input type="checkbox" class="mr-2" id="includeHourly" checked>
+                        Distribution horaire
+                    </label>
+                    <label class="flex items-center text-gray-900 dark:text-white">
+                        <input type="checkbox" class="mr-2" id="includeCharts" checked>
+                        Graphiques
+                    </label>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Inclure</label>
-                    <div class="space-y-2">
-                        <label class="flex items-center text-gray-900 dark:text-white">
-                            <input type="checkbox" class="mr-2" id="includeGLPI" checked>
-                            Tickets GLPI
-                        </label>
-                        <label class="flex items-center text-gray-900 dark:text-white">
-                            <input type="checkbox" class="mr-2" id="includeBlocking" checked>
-                            Tickets Bloquants
-                        </label>
-                        <label class="flex items-center text-gray-900 dark:text-white">
-                            <input type="checkbox" class="mr-2" id="includeTags" checked>
-                            Tags
-                        </label>
-                        <label class="flex items-center text-gray-900 dark:text-white">
-                            <input type="checkbox" class="mr-2" id="includeCallers" checked>
-                            Appelants
-                        </label>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" 
-                            onclick="closeExportModal()" 
-                            class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600">
-                        Annuler
-                    </button>
-                    <button type="submit" 
-                            id="exportButton"
-                            class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700">
-                        Exporter
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" 
+                        onclick="closeExportModal()" 
+                        class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600">
+                    Annuler
+                </button>
+                <button type="submit" 
+                        id="exportButton"
+                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Exporter
+                </button>
+            </div>
+        </form>
     </div>
+</div>
 
     <script>
         window.initialStats = <%- JSON.stringify(stats) %>;
