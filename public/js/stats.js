@@ -22,7 +22,7 @@ function updateMainChart(data) {
             labels: chartData.map(d => d.name),
             datasets: [
                 {
-                    label: 'Total Tickets',
+                    label: 'Total Appels',
                     data: chartData.map(d => d.total),
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -44,7 +44,7 @@ function updateMainChart(data) {
                     borderWidth: 2
                 },
                 {
-                    label: 'Tickets Bloquants',
+                    label: 'Appels Bloquants',
                     data: chartData.map(d => d.blocking),
                     borderColor: 'rgb(239, 68, 68)',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
