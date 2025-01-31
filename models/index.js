@@ -57,6 +57,10 @@ const Ticket = sequelize.define('Ticket', {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     },
+    isBlocking: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
     isArchived: {
         type: DataTypes.BOOLEAN,
         defaultValue: false

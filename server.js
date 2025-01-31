@@ -151,9 +151,10 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
         const ticket = await Ticket.create({
             caller: req.body.caller,
             reason: req.body.reason || '',
-            tags,
+            tags: tags,
             status: 'open',
             isGLPI: req.body.isGLPI === 'true',
+            isBlocking: req.body.isBlocking === 'true',
             createdBy: req.session.username
         });
 
@@ -228,6 +229,7 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             reason: req.body.isGLPI === 'true' ? '' : (req.body.reason || ''),
             tags: req.body.isGLPI === 'true' ? [] : (req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()) : []),
             isGLPI: req.body.isGLPI === 'true',
+            isBlocking: req.body.isBlocking === 'true',
             lastModifiedBy: req.session.username,
             lastModifiedAt: new Date()
         };
