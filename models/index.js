@@ -8,8 +8,64 @@ const sequelize = new Sequelize({
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
-    logging: false
+    logging: false,
+    timezone: 'Europe/Paris',
+    dialectOptions: {
+        useUTC: false,
+        dateStrings: true,
+        typeCast: true,
+        timezone: '+01:00'
+    },
+    define: {
+        timestamps: true,
+        hooks: {
+            beforeCreate: (record) => {
+                if (record.dataValues.createdAt) {
+                    record.dataValues.createdAt = new Date(
+                        new Date(record.dataValues.createdAt).toLocaleString('en-US', {
+                            timeZone: 'Europe/Paris'
+                        })
+                    );
+                }
+                if (record.dataValues.updatedAt) {
+                    record.dataValues.updatedAt = new Date(
+                        new Date(record.dataValues.updatedAt).toLocaleString('en-US', {
+                            timeZone: 'Europe/Paris'
+                        })
+                    );
+                }
+            }
+        }
+    }
 });
+
+// Fonctions utilitaires pour les dates
+const dateHooks = {
+    beforeCreate: (record) => {
+        const fields = ['createdAt', 'updatedAt', 'lastLogin', 'lastModifiedAt', 'archivedAt'];
+        fields.forEach(field => {
+            if (record.dataValues[field]) {
+                record.dataValues[field] = new Date(
+                    new Date(record.dataValues[field]).toLocaleString('en-US', {
+                        timeZone: 'Europe/Paris'
+                    })
+                );
+            }
+        });
+    },
+    beforeUpdate: (record) => {
+        const fields = ['updatedAt', 'lastModifiedAt', 'archivedAt'];
+        fields.forEach(field => {
+            if (record.dataValues[field]) {
+                record.dataValues[field] = new Date(
+                    new Date(record.dataValues[field]).toLocaleString('en-US', {
+                        timeZone: 'Europe/Paris'
+                    })
+                );
+            }
+        });
+    }
+};
 
 // Définir les modèles
 const User = sequelize.define('User', {
@@ -28,6 +84,7 @@ const User = sequelize.define('User', {
         allowNull: true
     }
 }, {
+    hooks: dateHooks,
     tableName: 'users'
 });
 
@@ -86,6 +143,7 @@ const Ticket = sequelize.define('Ticket', {
         allowNull: true
     }
 }, {
+    hooks: dateHooks,
     tableName: 'tickets'
 });
 
@@ -108,6 +166,7 @@ const Message = sequelize.define('Message', {
         allowNull: false
     }
 }, {
+    hooks: dateHooks,
     tableName: 'messages'
 });
 
@@ -126,6 +185,7 @@ const SavedField = sequelize.define('SavedField', {
         allowNull: false
     }
 }, {
+    hooks: dateHooks,
     tableName: 'saved_fields',
     indexes: [
         {

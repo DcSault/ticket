@@ -10,7 +10,14 @@ async function resetDatabase() {
         username: process.env.DB_USER,
         password: process.env.DB_PASS,
         port: process.env.DB_PORT,
-        logging: false
+        logging: false,
+        timezone: 'Europe/Paris',
+        dialectOptions: {
+            useUTC: false,
+            dateStrings: true,
+            typeCast: true,
+            timezone: '+01:00'
+        }
     });
 
     try {
@@ -19,6 +26,10 @@ async function resetDatabase() {
 
         await mainSequelize.query(`CREATE DATABASE ${process.env.DB_NAME};`);
         console.log('✅ Nouvelle base de données créée');
+
+        // Configurer le fuseau horaire immédiatement après la création
+        await mainSequelize.query(`ALTER DATABASE ${process.env.DB_NAME} SET timezone TO 'Europe/Paris';`);
+        console.log('✅ Fuseau horaire configuré sur Europe/Paris');
 
         // Importer les modèles et créer les tables
         const { sequelize, User, Ticket, Message, SavedField } = require('../models');

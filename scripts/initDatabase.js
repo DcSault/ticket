@@ -6,15 +6,26 @@ async function initTables() {
         password: process.env.DB_PASS,
         database: process.env.DB_NAME,
         port: process.env.DB_PORT,
-        logging: console.log // Activons temporairement le logging pour debug
+        logging: console.log, // Logging pour debug
+        timezone: 'Europe/Paris', // Définit le fuseau horaire
+        dialectOptions: {
+            useUTC: false,
+            dateStrings: true,
+            typeCast: true,
+            timezone: '+01:00'
+        }
     });
 
     try {
         // Import des modèles
         const { User, Ticket, Message, SavedField } = require('../models');
 
+        // Configurer le fuseau horaire de la base de données
+        await sequelize.query("ALTER DATABASE " + process.env.DB_NAME + " SET timezone TO 'Europe/Paris';");
+        console.log('✅ Fuseau horaire configuré sur Europe/Paris');
+
         // Force la recréation des tables
-        await sequelize.sync({ force: true }); // Attention: ceci supprimera les données existantes
+        await sequelize.sync({ force: true });
         
         console.log('✅ Tables synchronisées avec succès');
         
