@@ -8,41 +8,12 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const { Op } = require('sequelize');
 
+
 // Import des modèles
 const { sequelize, User, Ticket, Message, SavedField } = require('./models');
 
 const app = express();
 const UPLOADS_DIR = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');
-
-// Création des dates en UTC
-const createUTCDate = (date) => {
-    const d = new Date(date);
-    return new Date(Date.UTC(
-        d.getFullYear(),
-        d.getMonth(),
-        d.getDate(),
-        d.getHours(),
-        d.getMinutes(),
-        d.getSeconds()
-    ));
-};
-
-// Format date en UTC strict
-const formatDateUTC = (date) => {
-    const d = createUTCDate(date);
-    const days = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
-    const day = days[d.getUTCDay()];
-    
-    return `${day} ${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')} UTC`;
-};
-
-// Bornes de journée en UTC
-const getUTCDayBounds = (date) => {
-    const d = createUTCDate(date);
-    const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
-    const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999));
-    return { start, end };
-};
 
 // Middleware Configuration
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -91,24 +62,17 @@ const requireLogin = (req, res, next) => {
 // Fonction pour archiver les tickets anciens
 async function archiveOldTickets() {
     try {
-        const now = createUTCDate(new Date());
-        now.setUTCDate(now.getUTCDate() - 1); // 24h avant
-        
         const tickets = await Ticket.findAll({
             where: {
                 isArchived: false,
                 createdAt: {
-                    [Op.lt]: now
+                    [Op.lt]: new Date(new Date() - 24 * 60 * 60 * 1000) // Tickets de plus de 24 heures
                 }
             }
         });
 
         for (const ticket of tickets) {
-            await ticket.update({ 
-                isArchived: true, 
-                archivedAt: createUTCDate(new Date()), 
-                archivedBy: 'system' 
-            });
+            await ticket.update({ isArchived: true, archivedAt: new Date(), archivedBy: 'system' });
         }
     } catch (error) {
         console.error('Erreur lors de l\'archivage des tickets:', error);
@@ -164,11 +128,7 @@ app.get('/', requireLogin, async (req, res) => {
         const savedFields = await SavedField.findAll();
         
         res.render('index', {
-            tickets: tickets.map(ticket => ({
-                ...ticket.toJSON(),
-                createdAt: formatDateUTC(ticket.createdAt),
-                updatedAt: ticket.updatedAt ? formatDateUTC(ticket.updatedAt) : null
-            })),
+            tickets,
             savedFields: {
                 callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
                 reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
@@ -181,11 +141,11 @@ app.get('/', requireLogin, async (req, res) => {
         res.status(500).send('Erreur serveur');
     }
 });
+
 // Routes des tickets
 app.post('/api/tickets', requireLogin, async (req, res) => {
     try {
         const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()) : [];
-        const now = createUTCDate(new Date());
         
         const ticket = await Ticket.create({
             caller: req.body.caller,
@@ -194,8 +154,7 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
             status: 'open',
             isGLPI: req.body.isGLPI === 'true',
             isBlocking: req.body.isBlocking === 'true',
-            createdBy: req.session.username,
-            createdAt: now
+            createdBy: req.session.username
         });
 
         if (!ticket.isGLPI) {
@@ -219,21 +178,13 @@ app.get('/ticket/:id', requireLogin, async (req, res) => {
             include: [Message]
         });
         
+        console.log('Ticket with messages:', ticket); // Vérifiez les messages associés
+        
         if (!ticket || ticket.isGLPI) {
             return res.redirect('/');
         }
 
-        const ticketData = {
-            ...ticket.toJSON(),
-            createdAt: formatDateUTC(ticket.createdAt),
-            updatedAt: ticket.updatedAt ? formatDateUTC(ticket.updatedAt) : null,
-            Messages: ticket.Messages.map(msg => ({
-                ...msg.toJSON(),
-                createdAt: formatDateUTC(msg.createdAt)
-            }))
-        };
-
-        res.render('ticket', { ticket: ticketData, username: req.session.username });
+        res.render('ticket', { ticket, username: req.session.username });
     } catch (error) {
         console.error('Erreur détails ticket:', error);
         res.status(500).send('Erreur serveur');
@@ -248,14 +199,9 @@ app.get('/ticket/:id/edit', requireLogin, async (req, res) => {
         }
 
         const savedFields = await SavedField.findAll();
-        const ticketData = {
-            ...ticket.toJSON(),
-            createdAt: formatDateUTC(ticket.createdAt),
-            updatedAt: ticket.updatedAt ? formatDateUTC(ticket.updatedAt) : null
-        };
 
         res.render('edit-ticket', { 
-            ticket: ticketData,
+            ticket,
             savedFields: {
                 callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
                 reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
@@ -277,7 +223,6 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             return res.redirect('/');
         }
 
-        const now = createUTCDate(new Date());
         const updatedData = {
             caller: req.body.caller,
             reason: req.body.isGLPI === 'true' ? '' : (req.body.reason || ''),
@@ -285,7 +230,7 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             isGLPI: req.body.isGLPI === 'true',
             isBlocking: req.body.isBlocking === 'true',
             lastModifiedBy: req.session.username,
-            lastModifiedAt: now
+            lastModifiedAt: new Date()
         };
 
         if (!updatedData.isGLPI) {
@@ -310,6 +255,7 @@ app.post('/api/tickets/:id/delete', requireLogin, async (req, res) => {
         });
 
         if (ticket) {
+            // Supprimer les fichiers images associés
             for (const message of ticket.Messages) {
                 if (message.type === 'image' && message.content.startsWith('/uploads/')) {
                     const imagePath = path.join(__dirname, message.content);
@@ -337,13 +283,7 @@ app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
             return res.status(404).send('Ticket non trouvé');
         }
 
-        const now = createUTCDate(new Date());
-        await ticket.update({ 
-            isArchived: true, 
-            archivedAt: now, 
-            archivedBy: req.session.username 
-        });
-        
+        await ticket.update({ isArchived: true, archivedAt: new Date(), archivedBy: req.session.username });
         res.redirect('/');
     } catch (error) {
         console.error('Erreur lors de l\'archivage:', error);
@@ -354,20 +294,22 @@ app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
 // Messages
 app.post('/api/tickets/:id/messages', requireLogin, upload.single('image'), async (req, res) => {
     try {
+        console.log('Request body:', req.body); // Vérifiez le corps de la requête
+        console.log('Request file:', req.file); // Vérifiez le fichier uploadé
         const ticket = await Ticket.findByPk(req.params.id);
         
         if (!ticket || ticket.isGLPI) {
             return res.status(404).send('Ticket non trouvé ou ticket GLPI');
         }
 
-        const now = createUTCDate(new Date());
         const message = await Message.create({
             TicketId: ticket.id,
             content: req.file ? `/uploads/${req.file.filename}` : req.body.content,
             type: req.file ? 'image' : 'text',
-            author: req.session.username,
-            createdAt: now
+            author: req.session.username
         });
+
+        console.log('Message created:', message); // Vérifiez le message créé
         
         res.redirect(`/ticket/${req.params.id}`);
     } catch (error) {
@@ -384,10 +326,10 @@ app.get('/archives', requireLogin, async (req, res) => {
 
         if (startDate || endDate) {
             whereClause.createdAt = {};
-            if (startDate) whereClause.createdAt[Op.gte] = createUTCDate(new Date(startDate));
+            if (startDate) whereClause.createdAt[Op.gte] = new Date(startDate);
             if (endDate) {
-                const endDateTime = createUTCDate(new Date(endDate));
-                endDateTime.setUTCHours(23, 59, 59, 999);
+                const endDateTime = new Date(endDate);
+                endDateTime.setHours(23, 59, 59, 999);
                 whereClause.createdAt[Op.lte] = endDateTime;
             }
         }
@@ -408,15 +350,8 @@ app.get('/archives', requireLogin, async (req, res) => {
 
         const savedFields = await SavedField.findAll();
 
-        const archivesData = archives.map(archive => ({
-            ...archive.toJSON(),
-            createdAt: formatDateUTC(archive.createdAt),
-            updatedAt: archive.updatedAt ? formatDateUTC(archive.updatedAt) : null,
-            archivedAt: archive.archivedAt ? formatDateUTC(archive.archivedAt) : null
-        }));
-
         res.render('archives', {
-            archives: archivesData,
+            archives,
             savedFields: {
                 callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
                 reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
@@ -425,8 +360,8 @@ app.get('/archives', requireLogin, async (req, res) => {
             search,
             filter,
             value,
-            startDate: startDate ? formatDateUTC(new Date(startDate)) : null,
-            endDate: endDate ? formatDateUTC(new Date(endDate)) : null
+            startDate,
+            endDate
         });
     } catch (error) {
         console.error('Erreur archives:', error);
@@ -448,34 +383,21 @@ app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
             return res.status(404).json({ error: 'Archive non trouvée' });
         }
 
-        const ticketData = {
-            ...ticket.toJSON(),
-            createdAt: formatDateUTC(ticket.createdAt),
-            updatedAt: ticket.updatedAt ? formatDateUTC(ticket.updatedAt) : null,
-            archivedAt: ticket.archivedAt ? formatDateUTC(ticket.archivedAt) : null
-        };
-
-        res.json(ticketData);
+        res.json(ticket);
     } catch (error) {
         console.error('Erreur détails archive:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-// Stats et rapports
-app.get('/stats', requireLogin, async (req, res) => {
+// Stats
+app.get('/stats', async (req, res) => {
     try {
         const tickets = await Ticket.findAll({
             order: [['createdAt', 'DESC']]
         });
 
-        const ticketsWithUTC = tickets.map(ticket => ({
-            ...ticket.toJSON(),
-            createdAt: formatDateUTC(ticket.createdAt),
-            updatedAt: ticket.updatedAt ? formatDateUTC(ticket.updatedAt) : null
-        }));
-
-        const stats = await processStats(ticketsWithUTC);
+        const stats = await processStats(tickets);
         res.render('stats', { stats });
     } catch (error) {
         console.error('Erreur stats:', error);
@@ -483,42 +405,145 @@ app.get('/stats', requireLogin, async (req, res) => {
     }
 });
 
+// Route pour afficher la page de rapport
 app.get('/report', async (req, res) => {
     try {
-        const defaultDate = createUTCDate(new Date());
-        const { start, end } = getUTCDayBounds(defaultDate);
-        
+        const defaultDate = new Date();
         const tickets = await Ticket.findAll({
             include: [Message],
             where: {
                 createdAt: {
-                    [Op.gte]: start,
-                    [Op.lte]: end
+                    [Op.gte]: new Date(defaultDate.setHours(0, 0, 0, 0)),
+                    [Op.lte]: new Date(defaultDate.setHours(23, 59, 59, 999))
                 }
             },
             order: [['createdAt', 'DESC']]
         });
 
-        const ticketsData = tickets.map(ticket => ({
-            ...ticket.toJSON(),
-            createdAt: formatDateUTC(ticket.createdAt),
-            updatedAt: ticket.updatedAt ? formatDateUTC(ticket.updatedAt) : null,
-            Messages: ticket.Messages.map(msg => ({
-                ...msg.toJSON(),
-                createdAt: formatDateUTC(msg.createdAt)
-            }))
-        }));
-
         res.render('report', { 
-            tickets: ticketsData,
-            username: req.session.username,
-            currentDate: formatDateUTC(defaultDate)
+            tickets, 
+            username: 'Visiteur', // Valeur par défaut pour les visiteurs
+            currentDate: defaultDate
         });
     } catch (error) {
         console.error('Erreur génération rapport:', error);
         res.status(500).send('Erreur serveur');
     }
 });
+
+// Route API pour générer les données du rapport
+app.get('/api/report-data', async (req, res) => {
+    try {
+        const requestDate = req.query.date ? new Date(req.query.date) : new Date();
+        const startDate = new Date(requestDate);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(requestDate);
+        endDate.setHours(23, 59, 59, 999);
+
+        const tickets = await Ticket.findAll({
+            where: {
+                createdAt: {
+                    [Op.between]: [startDate, endDate]
+                }
+            }
+        });
+
+        if (tickets.length === 0) {
+            return res.json({
+                total: 0,
+                glpi: 0,
+                blocking: 0,
+                hourlyDistribution: Array(24).fill(0),
+                morningTickets: 0,
+                afternoonTickets: 0,
+                topCallers: {},
+                topTags: {}
+            });
+        }
+
+        const stats = {
+            total: tickets.length,
+            glpi: tickets.filter(t => t.isGLPI).length,
+            blocking: tickets.filter(t => t.isBlocking).length,
+            hourlyDistribution: Array(24).fill(0),
+            morningTickets: 0,
+            afternoonTickets: 0,
+            topCallers: {},
+            topTags: {}
+        };
+
+        tickets.forEach(ticket => {
+            const ticketDate = new Date(ticket.createdAt);
+            const hour = ticketDate.getHours();
+
+            stats.hourlyDistribution[hour]++;
+
+            if (hour < 12) stats.morningTickets++;
+            else stats.afternoonTickets++;
+
+            stats.topCallers[ticket.caller] = (stats.topCallers[ticket.caller] || 0) + 1;
+
+            if (ticket.tags && Array.isArray(ticket.tags)) {
+                ticket.tags.forEach(tag => {
+                    stats.topTags[tag] = (stats.topTags[tag] || 0) + 1;
+                });
+            }
+        });
+
+        res.json(stats);
+    } catch (error) {
+        console.error('Erreur complète:', error);
+        res.status(500).json({
+            error: 'Erreur serveur',
+            message: error.message,
+            stack: error.stack
+        });
+    }
+});
+
+app.get('/api/report', async (req, res) => {
+    const date = new Date(req.query.date);
+    const stats = await getReportStats(date);
+    res.json(stats);
+  });
+  
+  async function getReportStats(date) {
+    // Statistiques quotidiennes
+    const dayStart = new Date(date);
+    dayStart.setHours(0,0,0,0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23,59,59,999);
+  
+    const tickets = await Ticket.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [dayStart, dayEnd]
+        }
+      }
+    });
+  
+    // Calculer les ratios et tranches horaires
+    const morningTickets = tickets.filter(t => new Date(t.createdAt).getHours() < 12);
+    const afternoonTickets = tickets.filter(t => new Date(t.createdAt).getHours() >= 12);
+  
+    const hourlyDistribution = Array(24).fill(0);
+    tickets.forEach(t => {
+      const hour = new Date(t.createdAt).getHours();
+      hourlyDistribution[hour]++;
+    });
+  
+    return {
+      total: tickets.length,
+      glpi: tickets.filter(t => t.isGLPI).length,
+      blocking: tickets.filter(t => t.isBlocking).length,
+      morningRatio: morningTickets.length / tickets.length,
+      afternoonRatio: afternoonTickets.length / tickets.length,
+      hourlyDistribution,
+      topCallers: getTopCallers(tickets),
+      topTags: getTopTags(tickets),
+      charts: generateChartsSVG(tickets)
+    };
+  }
 
 // Delete saved field
 app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
@@ -537,10 +562,236 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
     }
 });
 
+// Fonction pour générer les statistiques
+async function processStats(tickets) {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    
+    const stats = {
+        day: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        week: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        month: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        detailedData: [],
+        topTags: [],
+        topCallers: []
+    };
+
+    // Create maps for daily counts
+    const dailyCounts = new Map();
+    const dailyGLPICounts = new Map();
+    const dailyBlockingCounts = new Map();
+
+    // Initialize last 30 days
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        const dateStr = date.toLocaleDateString('fr-FR');
+        dailyCounts.set(dateStr, 0);
+        dailyGLPICounts.set(dateStr, 0);
+        dailyBlockingCounts.set(dateStr, 0);
+        stats.day.labels.push(dateStr);
+    }
+
+    // Process each ticket
+    const tagStats = {};
+    const callerStats = {};
+
+    tickets.forEach(ticket => {
+        const ticketDate = new Date(ticket.createdAt);
+        ticketDate.setHours(0, 0, 0, 0);
+        const dateStr = ticketDate.toLocaleDateString('fr-FR');
+
+        stats.detailedData.push({
+            id: ticket.id,
+            date: ticket.createdAt,
+            caller: ticket.caller,
+            tags: ticket.tags,
+            isGLPI: ticket.isGLPI,
+            isBlocking: ticket.isBlocking
+        });
+
+        if (dailyCounts.has(dateStr)) {
+            dailyCounts.set(dateStr, (dailyCounts.get(dateStr) || 0) + 1);
+            if (ticket.isGLPI) {
+                dailyGLPICounts.set(dateStr, (dailyGLPICounts.get(dateStr) || 0) + 1);
+            }
+            if (ticket.isBlocking) {
+                dailyBlockingCounts.set(dateStr, (dailyBlockingCounts.get(dateStr) || 0) + 1);
+            }
+        }
+
+        // Count tags
+        if (ticket.tags && Array.isArray(ticket.tags)) {
+            ticket.tags.forEach(tag => {
+                tagStats[tag] = (tagStats[tag] || 0) + 1;
+            });
+        }
+
+        // Count callers
+        if (ticket.caller) {
+            callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
+        }
+    });
+
+    // Fill day data arrays
+    stats.day.labels.forEach(dateStr => {
+        stats.day.data.push(dailyCounts.get(dateStr) || 0);
+        stats.day.glpiData.push(dailyGLPICounts.get(dateStr) || 0);
+        stats.day.blockingData.push(dailyBlockingCounts.get(dateStr) || 0);
+    });
+
+    // Calculate weekly statistics
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1);
+    weekStart.setHours(0, 0, 0, 0);
+
+    for (let i = 3; i >= 0; i--) {
+        const start = new Date(weekStart);
+        start.setDate(start.getDate() - (i * 7));
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        
+        const weekLabel = `${start.toLocaleDateString('fr-FR')} - ${end.toLocaleDateString('fr-FR')}`;
+        stats.week.labels.push(weekLabel);
+        
+        const weekTickets = tickets.filter(ticket => {
+            const ticketDate = new Date(ticket.createdAt);
+            return ticketDate >= start && ticketDate <= end;
+        });
+        
+        stats.week.data.push(weekTickets.length);
+        stats.week.glpiData.push(weekTickets.filter(t => t.isGLPI).length);
+        stats.week.blockingData.push(weekTickets.filter(t => t.isBlocking).length);
+    }
+
+    // Calculate monthly statistics
+    for (let i = 11; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        
+        const monthLabel = monthStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+        stats.month.labels.push(monthLabel);
+        
+        const monthTickets = tickets.filter(ticket => {
+            const ticketDate = new Date(ticket.createdAt);
+            return ticketDate >= monthStart && ticketDate <= monthEnd;
+        });
+        
+        stats.month.data.push(monthTickets.length);
+        stats.month.glpiData.push(monthTickets.filter(t => t.isGLPI).length);
+        stats.month.blockingData.push(monthTickets.filter(t => t.isBlocking).length);
+    }
+
+    // Calculate totals
+    ['day', 'week', 'month'].forEach(period => {
+        stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
+        stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
+        stats[period].blocking = stats[period].blockingData.reduce((a, b) => a + b, 0);
+    });
+
+    // Calculate top tags and callers
+    stats.topTags = Object.entries(tagStats)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    stats.topCallers = Object.entries(callerStats)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    return stats;
+}
+
 // Gestion des erreurs globales
 app.use((err, req, res, next) => {
     console.error('Erreur non gérée:', err);
     res.status(500).send('Erreur serveur interne');
+});
+
+// Route pour afficher le formulaire de création de ticket personnalisé (accessible à tous)
+app.get('/admin/create-ticket', async (req, res) => {
+    try {
+        const savedFields = await SavedField.findAll();
+        res.render('admin/create-ticket', {
+            savedFields: {
+                callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
+                reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
+                tags: savedFields.filter(f => f.type === 'tag').map(f => f.value)
+            },
+            username: 'Admin' // Vous pouvez définir un nom d'utilisateur par défaut
+        });
+    } catch (error) {
+        console.error('Erreur lors de l\'affichage du formulaire admin:', error);
+        res.status(500).send('Erreur serveur');
+    }
+});
+
+app.get('/api/report', async (req, res) => {
+    const date = new Date(req.query.date);
+    const stats = await getReportStats(date);
+    res.json(stats);
+  });
+  
+  async function getReportStats(date) {
+    // Statistiques quotidiennes
+    const dayStart = new Date(date);
+    dayStart.setHours(0,0,0,0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23,59,59,999);
+
+    const tickets = await Ticket.findAll({
+        where: {
+            createdAt: {
+                [Op.between]: [dayStart, dayEnd]
+            }
+        }
+    });
+
+    // Calculer les ratios et tranches horaires
+    const morningTickets = tickets.filter(t => new Date(t.createdAt).getHours() < 12);
+    const afternoonTickets = tickets.filter(t => new Date(t.createdAt).getHours() >= 12);
+
+    const hourlyDistribution = Array(24).fill(0);
+    tickets.forEach(t => {
+        const hour = new Date(t.createdAt).getHours();
+        hourlyDistribution[hour]++;
+    });
+
+    return {
+        total: tickets.length,
+        glpi: tickets.filter(t => t.isGLPI).length,
+        blocking: tickets.filter(t => t.isBlocking).length,
+        morningRatio: morningTickets.length / tickets.length,
+        afternoonRatio: afternoonTickets.length / tickets.length,
+        hourlyDistribution,
+        topCallers: getTopCallers(tickets),
+        topTags: getTopTags(tickets),
+        charts: generateChartsSVG(tickets)
+    };
+}
+
+// Route pour traiter la création du ticket personnalisé (accessible à tous)
+app.post('/admin/create-ticket', async (req, res) => {
+    try {
+        const { caller, reason, tags, status, isGLPI, createdAt, createdBy } = req.body;
+
+        const ticket = await Ticket.create({
+            caller,
+            reason: reason || '',
+            tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+            status: status || 'open',
+            isGLPI: isGLPI === 'true',
+            createdAt: createdAt ? new Date(createdAt) : new Date(),
+            createdBy: createdBy || 'Admin' // Utilise la valeur du formulaire ou une valeur par défaut
+        });
+
+        res.redirect('/'); // Redirigez l'utilisateur après la création
+    } catch (error) {
+        console.error('Erreur lors de la création du ticket:', error);
+        res.status(500).send('Erreur serveur');
+    }
 });
 
 // Démarrage du serveur
