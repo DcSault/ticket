@@ -1,3 +1,9 @@
+/**
+ * Serveur principal de l'application de gestion de tickets
+ * Version: 1.1.0
+ * Dernière mise à jour: Restructuration des fichiers CSS et JavaScript
+ */
+
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -19,15 +25,25 @@ const UPLOADS_DIR = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use('/uploads', express.static(process.env.UPLOAD_DIR));
+
+// Configuration améliorée des fichiers statiques
+app.use('/css', express.static(path.join(__dirname, 'public/css')));
+app.use('/js', express.static(path.join(__dirname, 'public/js')));
+app.use('/img', express.static(path.join(__dirname, 'public/img')));
 app.use(express.static('public'));
+
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true
 }));
 
+app.engine('ejs', require('ejs').renderFile);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Ajouter cette ligne pour servir les fichiers HTML
+app.use('/html', express.static(path.join(__dirname, 'public/html')));
 
 // Multer Configuration
 const storage = multer.diskStorage({
@@ -82,14 +98,25 @@ async function archiveOldTickets() {
 // Appel de la fonction toutes les 24 heures
 setInterval(archiveOldTickets, 24 * 60 * 60 * 1000);
 
+// Vérifier si on utilise HTML ou EJS
+const useHTML = process.env.USE_HTML === 'true';
+
 // Routes d'authentification
-app.get('/login', async (req, res) => {
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/login.html'));
+});
+
+// Route API pour récupérer la liste des utilisateurs (pour l'autocomplétion)
+app.get('/api/users', async (req, res) => {
     try {
-        const users = await User.findAll();
-        res.render('login', { savedUsers: users.map(u => u.username) });
+        const users = await User.findAll({
+            attributes: ['username'],
+            order: [['username', 'ASC']]
+        });
+        res.json(users.map(user => user.username));
     } catch (error) {
-        console.error('Erreur accès login:', error);
-        res.render('login', { savedUsers: [] });
+        console.error('Erreur lors de la récupération des utilisateurs:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
@@ -117,29 +144,8 @@ app.get('/logout', (req, res) => {
 });
 
 // Routes principales
-app.get('/', requireLogin, async (req, res) => {
-    try {
-        const tickets = await Ticket.findAll({
-            include: [Message],
-            where: { isArchived: false },
-            order: [['createdAt', 'DESC']]
-        });
-
-        const savedFields = await SavedField.findAll();
-        
-        res.render('index', {
-            tickets,
-            savedFields: {
-                callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
-                reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
-                tags: savedFields.filter(f => f.type === 'tag').map(f => f.value)
-            },
-            username: req.session.username
-        });
-    } catch (error) {
-        console.error('Erreur page principale:', error);
-        res.status(500).send('Erreur serveur');
-    }
+app.get('/', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/index.html'));
 });
 
 // Routes des tickets
@@ -172,47 +178,12 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
     }
 });
 
-app.get('/ticket/:id', requireLogin, async (req, res) => {
-    try {
-        const ticket = await Ticket.findByPk(req.params.id, {
-            include: [Message]
-        });
-        
-        console.log('Ticket with messages:', ticket); // Vérifiez les messages associés
-        
-        if (!ticket || ticket.isGLPI) {
-            return res.redirect('/');
-        }
-
-        res.render('ticket', { ticket, username: req.session.username });
-    } catch (error) {
-        console.error('Erreur détails ticket:', error);
-        res.status(500).send('Erreur serveur');
-    }
+app.get('/ticket/:id', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/ticket.html'));
 });
 
-app.get('/ticket/:id/edit', requireLogin, async (req, res) => {
-    try {
-        const ticket = await Ticket.findByPk(req.params.id);
-        if (!ticket) {
-            return res.redirect('/');
-        }
-
-        const savedFields = await SavedField.findAll();
-
-        res.render('edit-ticket', { 
-            ticket,
-            savedFields: {
-                callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
-                reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
-                tags: savedFields.filter(f => f.type === 'tag').map(f => f.value)
-            },
-            username: req.session.username
-        });
-    } catch (error) {
-        console.error('Erreur page édition:', error);
-        res.status(500).send('Erreur serveur');
-    }
+app.get('/ticket/:id/edit', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/edit-ticket.html'));
 });
 
 app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
@@ -319,74 +290,76 @@ app.post('/api/tickets/:id/messages', requireLogin, upload.single('image'), asyn
 });
 
 // Archives
-app.get('/archives', requireLogin, async (req, res) => {
+app.get('/archives', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/archives.html'));
+});
+
+app.get('/api/archives', requireLogin, async (req, res) => {
     try {
-        let whereClause = { isArchived: true };
-        const { search, filter, value, startDate, endDate } = req.query;
-
-        if (startDate || endDate) {
-            whereClause.createdAt = {};
-            if (startDate) whereClause.createdAt[Op.gte] = new Date(startDate);
-            if (endDate) {
-                const endDateTime = new Date(endDate);
-                endDateTime.setHours(23, 59, 59, 999);
-                whereClause.createdAt[Op.lte] = endDateTime;
-            }
-        }
-
+        // Récupérer les filtres depuis la requête
+        const { search, startDate, endDate, filter, value } = req.query;
+        
+        // Construire la requête de base
+        let whereClause = {
+            isArchived: true
+        };
+        
+        // Ajouter les filtres si présents
         if (search) {
             whereClause[Op.or] = [
-                { caller: { [Op.iLike]: `%${search}%` }},
-                { reason: { [Op.iLike]: `%${search}%` }},
-                { tags: { [Op.overlap]: [search] }}
+                { caller: { [Op.iLike]: `%${search}%` } },
+                { reason: { [Op.iLike]: `%${search}%` } }
             ];
         }
-
+        
+        if (startDate) {
+            whereClause.createdAt = whereClause.createdAt || {};
+            whereClause.createdAt[Op.gte] = new Date(startDate);
+        }
+        
+        if (endDate) {
+            whereClause.createdAt = whereClause.createdAt || {};
+            whereClause.createdAt[Op.lte] = new Date(endDate);
+        }
+        
+        if (filter && value) {
+            if (filter === 'tag') {
+                whereClause.tags = { [Op.contains]: [value] };
+            } else {
+                whereClause[filter] = { [Op.iLike]: `%${value}%` };
+            }
+        }
+        
+        // Récupérer les tickets archivés
         const archives = await Ticket.findAll({
             where: whereClause,
-            include: [Message],
             order: [['createdAt', 'DESC']]
         });
-
-        const savedFields = await SavedField.findAll();
-
-        res.render('archives', {
-            archives,
-            savedFields: {
-                callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
-                reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
-                tags: savedFields.filter(f => f.type === 'tag').map(f => f.value)
-            },
-            search,
-            filter,
-            value,
-            startDate,
-            endDate
-        });
+        
+        res.json(archives);
     } catch (error) {
-        console.error('Erreur archives:', error);
-        res.status(500).send('Erreur serveur');
+        console.error('Erreur lors de la récupération des archives:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des archives' });
     }
 });
 
 app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
     try {
-        const ticket = await Ticket.findOne({
-            where: { 
-                id: req.params.id,
-                isArchived: true
-            },
+        const ticketId = req.params.id;
+        
+        // Récupérer le ticket avec ses messages
+        const ticket = await Ticket.findByPk(ticketId, {
             include: [Message]
         });
         
         if (!ticket) {
-            return res.status(404).json({ error: 'Archive non trouvée' });
+            return res.status(404).json({ error: 'Ticket non trouvé' });
         }
-
+        
         res.json(ticket);
     } catch (error) {
-        console.error('Erreur détails archive:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('Erreur lors de la récupération des détails du ticket:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des détails du ticket' });
     }
 });
 
@@ -513,37 +486,36 @@ app.get('/api/report', async (req, res) => {
     dayStart.setHours(0,0,0,0);
     const dayEnd = new Date(date);
     dayEnd.setHours(23,59,59,999);
-  
+
     const tickets = await Ticket.findAll({
-      where: {
-        createdAt: {
-          [Op.between]: [dayStart, dayEnd]
+        where: {
+            createdAt: {
+                [Op.between]: [dayStart, dayEnd]
+            }
         }
-      }
     });
-  
+
     // Calculer les ratios et tranches horaires
     const morningTickets = tickets.filter(t => new Date(t.createdAt).getHours() < 12);
     const afternoonTickets = tickets.filter(t => new Date(t.createdAt).getHours() >= 12);
-  
+
     const hourlyDistribution = Array(24).fill(0);
     tickets.forEach(t => {
-      const hour = new Date(t.createdAt).getHours();
-      hourlyDistribution[hour]++;
+        const hour = new Date(t.createdAt).getHours();
+        hourlyDistribution[hour]++;
     });
-  
+
     return {
-      total: tickets.length,
-      glpi: tickets.filter(t => t.isGLPI).length,
-      blocking: tickets.filter(t => t.isBlocking).length,
-      morningRatio: morningTickets.length / tickets.length,
-      afternoonRatio: afternoonTickets.length / tickets.length,
-      hourlyDistribution,
-      topCallers: getTopCallers(tickets),
-      topTags: getTopTags(tickets),
-      charts: generateChartsSVG(tickets)
+        total: tickets.length,
+        glpi: tickets.filter(t => t.isGLPI).length,
+        blocking: tickets.filter(t => t.isBlocking).length,
+        morningRatio: morningTickets.length / tickets.length,
+        afternoonRatio: afternoonTickets.length / tickets.length,
+        hourlyDistribution,
+        topCallers: getTopCallers(tickets),
+        topTags: getTopTags(tickets)
     };
-  }
+}
 
 // Delete saved field
 app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
@@ -704,6 +676,85 @@ async function processStats(tickets) {
     return stats;
 }
 
+// Fonction pour obtenir les top callers
+function getTopCallers(tickets) {
+  const callerStats = {};
+  
+  tickets.forEach(ticket => {
+    if (ticket.caller) {
+      callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
+    }
+  });
+  
+  return callerStats;
+}
+
+// Fonction pour obtenir les top tags
+function getTopTags(tickets) {
+  const tagStats = {};
+  
+  tickets.forEach(ticket => {
+    if (ticket.tags && Array.isArray(ticket.tags)) {
+      ticket.tags.forEach(tag => {
+        tagStats[tag] = (tagStats[tag] || 0) + 1;
+      });
+    }
+  });
+  
+  return tagStats;
+}
+
+// Routes API pour les données
+app.get('/api/user', requireLogin, (req, res) => {
+    res.json({ username: req.session.username });
+});
+
+app.get('/api/tickets', requireLogin, async (req, res) => {
+    try {
+        const tickets = await Ticket.findAll({
+            include: [Message],
+            where: { isArchived: false },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(tickets);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des tickets:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des tickets' });
+    }
+});
+
+app.get('/api/tickets/:id', requireLogin, async (req, res) => {
+    try {
+        const ticket = await Ticket.findByPk(req.params.id, {
+            include: [Message]
+        });
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket non trouvé' });
+        }
+        
+        res.json(ticket);
+    } catch (error) {
+        console.error('Erreur lors de la récupération du ticket:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération du ticket' });
+    }
+});
+
+app.get('/api/saved-fields', requireLogin, async (req, res) => {
+    try {
+        const savedFields = await SavedField.findAll();
+        
+        res.json({
+            callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
+            reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
+            tags: savedFields.filter(f => f.type === 'tag').map(f => f.value)
+        });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des champs mémorisés:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des champs mémorisés' });
+    }
+});
+
 // Gestion des erreurs globales
 app.use((err, req, res, next) => {
     console.error('Erreur non gérée:', err);
@@ -727,50 +778,6 @@ app.get('/admin/create-ticket', async (req, res) => {
         res.status(500).send('Erreur serveur');
     }
 });
-
-app.get('/api/report', async (req, res) => {
-    const date = new Date(req.query.date);
-    const stats = await getReportStats(date);
-    res.json(stats);
-  });
-  
-  async function getReportStats(date) {
-    // Statistiques quotidiennes
-    const dayStart = new Date(date);
-    dayStart.setHours(0,0,0,0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23,59,59,999);
-
-    const tickets = await Ticket.findAll({
-        where: {
-            createdAt: {
-                [Op.between]: [dayStart, dayEnd]
-            }
-        }
-    });
-
-    // Calculer les ratios et tranches horaires
-    const morningTickets = tickets.filter(t => new Date(t.createdAt).getHours() < 12);
-    const afternoonTickets = tickets.filter(t => new Date(t.createdAt).getHours() >= 12);
-
-    const hourlyDistribution = Array(24).fill(0);
-    tickets.forEach(t => {
-        const hour = new Date(t.createdAt).getHours();
-        hourlyDistribution[hour]++;
-    });
-
-    return {
-        total: tickets.length,
-        glpi: tickets.filter(t => t.isGLPI).length,
-        blocking: tickets.filter(t => t.isBlocking).length,
-        morningRatio: morningTickets.length / tickets.length,
-        afternoonRatio: afternoonTickets.length / tickets.length,
-        hourlyDistribution,
-        topCallers: getTopCallers(tickets),
-        topTags: getTopTags(tickets),
-        charts: generateChartsSVG(tickets)
-    };
-}
 
 // Route pour traiter la création du ticket personnalisé (accessible à tous)
 app.post('/admin/create-ticket', async (req, res) => {
@@ -806,7 +813,13 @@ async function startServer() {
         await fsPromises.mkdir(UPLOADS_DIR, { recursive: true });
         console.log('✅ Dossier uploads vérifié');
 
-        const VERSION = '1.0.5';
+        // Vérifier l'existence des dossiers pour les fichiers statiques
+        await fsPromises.mkdir(path.join(__dirname, 'public/css'), { recursive: true });
+        await fsPromises.mkdir(path.join(__dirname, 'public/js/pages'), { recursive: true });
+        await fsPromises.mkdir(path.join(__dirname, 'public/img'), { recursive: true });
+        console.log('✅ Dossiers pour fichiers statiques vérifiés');
+
+        const VERSION = '2.0.0';
         console.log(`🚀 Version du serveur : ${VERSION}`);
 
         app.listen(process.env.PORT, () => {

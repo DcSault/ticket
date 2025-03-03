@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html class="dark:bg-gray-900">
+<head>
+    <title>Modifier Appel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/edit-ticket.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-4">
+            <a href="/" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">&larr; Retour</a>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md form-container">
+            <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Modifier l'Appel</h1>
+
+            <form id="editTicketForm" class="space-y-4">
+                <!-- GLPI et Bloquant Options -->
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" 
+                               id="isGLPI" 
+                               name="isGLPI" 
+                               value="true"
+                               class="rounded"
+                               onchange="toggleGLPIFields(this)">
+                        <label for="isGLPI" class="text-gray-700 dark:text-gray-300">
+                            Ticket GLPI
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" 
+                               id="isBlocking" 
+                               name="isBlocking" 
+                               value="true"
+                               class="rounded">
+                        <label for="isBlocking" class="text-red-600 dark:text-red-400 font-medium">
+                            Bloquant
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Appelant</label>
+                    <input type="text" 
+                           name="caller" 
+                           id="caller"
+                           required 
+                           list="callers"
+                           class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <datalist id="callers">
+                        <!-- Les appelants seront injectés ici par JavaScript -->
+                    </datalist>
+                </div>
+
+                <div class="non-glpi-field">
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Raison</label>
+                    <input type="text" 
+                           name="reason" 
+                           id="reason"
+                           list="reasons"
+                           class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <datalist id="reasons">
+                        <!-- Les raisons seront injectées ici par JavaScript -->
+                    </datalist>
+                </div>
+
+                <div class="non-glpi-field">
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Tags</label>
+                    <input type="text" 
+                           name="tags" 
+                           id="tags"
+                           placeholder="Séparez les tags par des virgules"
+                           class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                           list="tagsList">
+                    <datalist id="tagsList">
+                        <!-- Les tags seront injectés ici par JavaScript -->
+                    </datalist>
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <a href="/"
+                       class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600">
+                        Annuler
+                    </a>
+                    <button type="submit" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700">
+                        Enregistrer les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts communs -->
+    <script src="/js/common.js"></script>
+    <script src="/js/ticketFunctions.js"></script>
+    <script src="/js/formFunctions.js"></script>
+    <script src="/js/apiClient.js"></script>
+    <script src="/js/uiHelpers.js"></script>
+    <script src="/js/themeManager.js"></script>
+    
+    <!-- Script spécifique à la page -->
+    <script>
+        // Récupérer l'ID du ticket depuis l'URL
+        const ticketId = window.location.pathname.split('/')[2];
+        
+        // Initialisation de la page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialiser les styles de formulaire
+            initFormStyles();
+            
+            // Charger les champs mémorisés
+            const savedFields = await fetchSavedFields();
+            
+            // Remplir les datalists
+            if (savedFields.callers) {
+                const callersDatalist = document.getElementById('callers');
+                savedFields.callers.forEach(caller => {
+                    const option = document.createElement('option');
+                    option.value = caller;
+                    callersDatalist.appendChild(option);
+                });
+            }
+            
+            if (savedFields.reasons) {
+                const reasonsDatalist = document.getElementById('reasons');
+                savedFields.reasons.forEach(reason => {
+                    const option = document.createElement('option');
+                    option.value = reason;
+                    reasonsDatalist.appendChild(option);
+                });
+            }
+            
+            if (savedFields.tags) {
+                const tagsDatalist = document.getElementById('tagsList');
+                savedFields.tags.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag;
+                    tagsDatalist.appendChild(option);
+                });
+            }
+            
+            // Configurer l'autocomplétion
+            setupAutocomplete('caller', savedFields.callers || []);
+            setupAutocomplete('reason', savedFields.reasons || []);
+            setupAutocomplete('tags', savedFields.tags || [], true);
+            
+            // Charger les données du ticket
+            const ticket = await fetchTicketDetails(ticketId);
+            if (ticket) {
+                // Remplir le formulaire avec les données du ticket
+                document.getElementById('isGLPI').checked = ticket.isGLPI;
+                document.getElementById('isBlocking').checked = ticket.isBlocking;
+                document.getElementById('caller').value = ticket.caller;
+                document.getElementById('reason').value = ticket.reason || '';
+                document.getElementById('tags').value = Array.isArray(ticket.tags) ? ticket.tags.join(', ') : ticket.tags || '';
+                
+                // Afficher/masquer les champs GLPI
+                toggleGLPIFields(document.getElementById('isGLPI'));
+            }
+            
+            // Gérer la soumission du formulaire
+            document.getElementById('editTicketForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Valider le formulaire
+                if (!validateForm(this, {
+                    caller: { required: true, message: 'L\'appelant est requis' },
+                    reason: { required: !document.getElementById('isGLPI').checked, message: 'La raison est requise' }
+                })) {
+                    return;
+                }
+                
+                // Préparer les données du formulaire
+                const formData = {
+                    isGLPI: document.getElementById('isGLPI').checked,
+                    isBlocking: document.getElementById('isBlocking').checked,
+                    caller: document.getElementById('caller').value,
+                    reason: document.getElementById('reason').value,
+                    tags: document.getElementById('tags').value
+                };
+                
+                // Mettre à jour le ticket
+                const result = await updateTicket(ticketId, formData);
+                if (result) {
+                    window.location.href = `/ticket/${ticketId}`;
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

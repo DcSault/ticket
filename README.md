@@ -226,3 +226,58 @@ Les contributions sont bienvenues :
 3. Commit les changements
 4. Push vers la branche
 5. Ouvrir une Pull Request
+
+## 🔧 Structure du Code
+
+### Séparation des Fichiers EJS
+
+Pour améliorer la maintenabilité du code, les fichiers EJS ont été restructurés en séparant :
+- **HTML** : Reste dans les fichiers EJS
+- **CSS** : Déplacé vers des fichiers dédiés dans `/public/css/`
+- **JavaScript** : Déplacé vers des fichiers dédiés dans `/public/js/pages/`
+
+#### Organisation des Fichiers
+
+```
+project/
+├── views/
+│   ├── login.ejs
+│   ├── index.ejs
+│   └── ...
+├── public/
+│   ├── css/
+│   │   ├── login.css
+│   │   ├── index.css
+│   │   └── ...
+│   └── js/
+│       ├── pages/
+│       │   ├── login.js
+│       │   ├── index.js
+│       │   └── ...
+│       └── themeManager.js
+└── ...
+```
+
+#### Injection de Données
+
+Pour passer des données du serveur au JavaScript client, nous utilisons une balise script avec un type application/json :
+
+```html
+<script id="userData" type="application/json">
+    <%- JSON.stringify(dataFromServer) %>
+</script>
+```
+
+Puis dans le fichier JavaScript :
+
+```javascript
+const userDataScript = document.getElementById('userData');
+if (userDataScript) {
+    try {
+        const data = JSON.parse(userDataScript.textContent);
+        // Utiliser les données
+    } catch (e) {
+        console.error('Erreur lors du parsing des données:', e);
+    }
+}
+```
