@@ -72,11 +72,19 @@ function renderActiveTickets(tickets, containerId = 'ticketsContainer') {
                 
                 <div class="flex gap-2">
                     <a href="/ticket/${ticket.id}" 
-                       class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                       class="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700 rounded-md text-sm font-medium transition-colors">
                         Voir
                     </a>
+                    <a href="/ticket/${ticket.id}/edit" 
+                       class="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700 rounded-md text-sm font-medium transition-colors">
+                        Modifier
+                    </a>
+                    <button onclick="deleteTicket('${ticket.id}', '/')"
+                            class="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-800 dark:text-red-200 dark:hover:bg-red-700 rounded-md text-sm font-medium transition-colors">
+                        Supprimer
+                    </button>
                     <button onclick="archiveTicket('${ticket.id}')"
-                            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                            class="px-3 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 rounded-md text-sm font-medium transition-colors">
                         Archiver
                     </button>
                 </div>
@@ -146,7 +154,7 @@ function renderArchivedTickets(archives, containerId = 'archivesContainer') {
                 </div>
                 ${!ticket.isGLPI ? `
                     <button onclick="showTicketDetails('${ticket.id}')"
-                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors">
+                            class="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700 rounded-md text-sm font-medium transition-colors">
                         Détails
                     </button>
                 ` : ''}
@@ -204,11 +212,15 @@ function renderTicketDetails(ticket, containerId = 'ticketDetails') {
             </div>
             <div class="flex gap-2">
                 <a href="/ticket/${ticket.id}/edit" 
-                   class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors">
+                   class="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700 rounded-md text-sm font-medium transition-colors">
                     Modifier
                 </a>
+                <button onclick="deleteTicket('${ticket.id}', '/')"
+                        class="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-800 dark:text-red-200 dark:hover:bg-red-700 rounded-md text-sm font-medium transition-colors">
+                    Supprimer
+                </button>
                 <button onclick="archiveTicket('${ticket.id}')"
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded transition-colors">
+                        class="px-3 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 rounded-md text-sm font-medium transition-colors">
                     Archiver
                 </button>
             </div>

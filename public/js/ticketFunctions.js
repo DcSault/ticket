@@ -158,4 +158,31 @@ function deleteSavedField(field, value) {
             showNotification('Erreur lors de la suppression du champ', 'error');
         });
     }
+}
+
+/**
+ * Supprime un ticket après confirmation
+ * @param {string} id - L'identifiant du ticket à supprimer
+ * @param {string} redirectUrl - URL de redirection après suppression (optionnel)
+ */
+function deleteTicket(id, redirectUrl = '/') {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cet appel ? Cette action est irréversible.')) {
+        fetch(`/api/tickets/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = redirectUrl;
+            } else {
+                throw new Error('Erreur lors de la suppression du ticket');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showNotification('Erreur lors de la suppression du ticket', 'error');
+        });
+    }
 } 
