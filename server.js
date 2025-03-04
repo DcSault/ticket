@@ -819,7 +819,7 @@ async function startServer() {
         await fsPromises.mkdir(path.join(__dirname, 'public/img'), { recursive: true });
         console.log('✅ Dossiers pour fichiers statiques vérifiés');
 
-        const VERSION = '2.0.0';
+        const VERSION = '2.0.1';
         console.log(`🚀 Version du serveur : ${VERSION}`);
 
         app.listen(process.env.PORT, () => {
