@@ -212,7 +212,7 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         }
 
         await ticket.update(updatedData);
-        res.redirect(`/ticket/${req.params.id}`);
+        res.redirect('/');
     } catch (error) {
         console.error('Erreur modification ticket:', error);
         res.status(500).send('Erreur lors de la modification du ticket');
@@ -819,7 +819,7 @@ async function startServer() {
         await fsPromises.mkdir(path.join(__dirname, 'public/img'), { recursive: true });
         console.log('✅ Dossiers pour fichiers statiques vérifiés');
 
-        const VERSION = '2.0.1';
+        const VERSION = '2.0.2';
         console.log(`🚀 Version du serveur : ${VERSION}`);
 
         app.listen(process.env.PORT, () => {
