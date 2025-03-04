@@ -176,8 +176,8 @@
                 
                 // Préparer les données du formulaire
                 const formData = {
-                    isGLPI: document.getElementById('isGLPI').checked,
-                    isBlocking: document.getElementById('isBlocking').checked,
+                    isGLPI: document.getElementById('isGLPI').checked ? 'true' : 'false',
+                    isBlocking: document.getElementById('isBlocking').checked ? 'true' : 'false',
                     caller: document.getElementById('caller').value,
                     reason: document.getElementById('reason').value,
                     tags: document.getElementById('tags').value
