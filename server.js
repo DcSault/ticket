@@ -212,7 +212,7 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         }
 
         await ticket.update(updatedData);
-        res.redirect('/');
+        res.redirect(`/ticket/${req.params.id}`);
     } catch (error) {
         console.error('Erreur modification ticket:', error);
         res.status(500).send('Erreur lors de la modification du ticket');
