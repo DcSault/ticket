@@ -141,7 +141,7 @@ async function createTicket(ticketData) {
  * Met à jour un ticket existant
  * @param {string} ticketId - ID du ticket à mettre à jour
  * @param {Object} ticketData - Nouvelles données du ticket
- * @returns {Promise<Object>} - Promesse résolue avec le ticket mis à jour
+ * @returns {Promise<boolean>} - Promesse résolue avec true si la mise à jour a réussi
  */
 async function updateTicket(ticketId, ticketData) {
     try {
@@ -157,11 +157,12 @@ async function updateTicket(ticketId, ticketData) {
             throw new Error('Erreur lors de la mise à jour du ticket');
         }
         
-        return await response.json();
+        // Le serveur renvoie une redirection, pas du JSON
+        return true;
     } catch (error) {
         console.error('Erreur:', error);
         showNotification('Erreur lors de la mise à jour du ticket', 'error');
-        return null;
+        return false;
     }
 }
 

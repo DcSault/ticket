@@ -50,7 +50,7 @@ function setupAutocomplete(fieldId, suggestions, isMultiple = false) {
                     const terms = input.value.split(',').map(t => t.trim()).filter(t => t);
                     terms.pop();
                     terms.push(match);
-                    input.value = terms.join(', ') + (terms.length > 0 ? ', ' : '');
+                    input.value = terms.join(', ');
                 } else {
                     input.value = match;
                 }
