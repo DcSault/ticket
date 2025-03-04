@@ -263,29 +263,63 @@ app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
 });
 
 // Messages
-app.post('/api/tickets/:id/messages', requireLogin, upload.single('image'), async (req, res) => {
+app.post('/api/tickets/:id/messages', requireLogin, async (req, res) => {
     try {
-        console.log('Request body:', req.body); // Vérifiez le corps de la requête
-        console.log('Request file:', req.file); // Vérifiez le fichier uploadé
         const ticket = await Ticket.findByPk(req.params.id);
         
-        if (!ticket || ticket.isGLPI) {
-            return res.status(404).send('Ticket non trouvé ou ticket GLPI');
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket non trouvé' });
         }
-
-        const message = await Message.create({
-            TicketId: ticket.id,
-            content: req.file ? `/uploads/${req.file.filename}` : req.body.content,
-            type: req.file ? 'image' : 'text',
-            author: req.session.username
-        });
-
-        console.log('Message created:', message); // Vérifiez le message créé
         
-        res.redirect(`/ticket/${req.params.id}`);
+        // Déterminer le type de message
+        const messageType = req.body.type === 'html' ? 'html' : 'text';
+        
+        // Créer le message
+        const message = await Message.create({
+            content: req.body.content,
+            type: messageType,
+            author: req.session.username,
+            TicketId: ticket.id
+        });
+        
+        res.status(201).json(message);
     } catch (error) {
-        console.error('Erreur création message:', error);
-        res.status(500).send('Erreur ajout message');
+        console.error('Erreur ajout message:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'ajout du message' });
+    }
+});
+
+// Route pour l'upload de fichier (autre que l'image actuelle)
+app.post('/api/tickets/:id/upload', requireLogin, upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Aucun fichier fourni' });
+        }
+        
+        const ticket = await Ticket.findByPk(req.params.id);
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket non trouvé' });
+        }
+        
+        // Déterminer le type basé sur le mimetype
+        let messageType = 'file';
+        if (req.file.mimetype.startsWith('image/')) {
+            messageType = 'image';
+        }
+        
+        // Créer le message
+        const message = await Message.create({
+            content: `/uploads/${req.file.filename}`,
+            fileName: req.file.originalname,
+            type: messageType,
+            author: req.session.username,
+            TicketId: ticket.id
+        });
+        
+        res.status(201).json(message);
+    } catch (error) {
+        console.error('Erreur upload fichier:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'upload du fichier' });
     }
 });
 

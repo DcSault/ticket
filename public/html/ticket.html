@@ -1,363 +1,166 @@
 <!DOCTYPE html>
 <html class="dark:bg-gray-900">
 <head>
-   <title>Détails du Ticket</title>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-   <link href="/css/ticket.css" rel="stylesheet">
+    <title>Détails du Ticket</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Quill editor CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link href="/css/ticket.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-   <div class="container mx-auto px-4 py-8">
-       <div class="mb-4 flex justify-between items-center">
-           <a href="/" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-2">
-               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-               </svg>
-               Retour à la liste
-           </a>
-           
-           <div class="relative" id="copyLinkButton">
-               <button class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
-                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                   </svg>
-                   <span id="copyTooltip">Copier le lien</span>
-               </button>
-           </div>
-       </div>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-screen flex flex-col">
+    <!-- Top Navigation Bar -->
+    <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <a href="/" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-2 transition">
+                    <i class="fas fa-arrow-left text-sm"></i>
+                    <span>Retour</span>
+                </a>
+                <h1 class="text-xl font-semibold hidden md:block" id="ticketTitle">Détails du ticket</h1>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <div class="hidden md:flex items-center">
+                    <span class="text-sm text-gray-500 dark:text-gray-400 mr-2" id="lastUpdated"></span>
+                </div>
+                <button id="copyLinkButton" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="Copier le lien">
+                    <i class="fas fa-link text-gray-600 dark:text-gray-400"></i>
+                </button>
+                <button id="toggleDarkMode" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="Changer de thème">
+                    <i class="fas fa-moon text-gray-600 dark:text-gray-400 dark-mode-toggle"></i>
+                </button>
+            </div>
+        </div>
+    </header>
 
-       <!-- Détails du ticket -->
-       <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md mb-8 ticket-container ticket-details" id="ticketDetails">
-           <!-- Les détails du ticket seront injectés ici par JavaScript -->
-       </div>
+    <!-- Main Content -->
+    <main class="flex-grow overflow-auto">
+        <div class="container mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
+            <!-- Left Column: Ticket Details & Messages -->
+            <div class="flex-grow md:w-2/3">
+                <!-- Ticket Information -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 ticket-details" id="ticketDetails">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                
+                <!-- Messages Stream -->
+                <div class="relative">
+                    <div class="sticky top-16 z-10 bg-gray-100 dark:bg-gray-900 py-2 mb-3 flex justify-between items-center">
+                        <h2 class="text-lg font-medium">Messages</h2>
+                        <div class="flex space-x-2">
+                            <button id="toggleLayout" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Changer l'affichage">
+                                <i class="fas fa-th-list text-gray-600 dark:text-gray-400"></i>
+                            </button>
+                            <button id="sortMessages" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Trier les messages">
+                                <i class="fas fa-sort text-gray-600 dark:text-gray-400"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="messagesContainer" class="space-y-4 message-container">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column: Actions & Message Composer -->
+            <div class="md:w-1/3">
+                <div class="sticky top-20">
+                    <!-- Ticket Actions -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+                        <h2 class="text-lg font-medium mb-4">Actions</h2>
+                        <div class="flex flex-col space-y-2">
+                            <a href="/ticket/${ticketId}/edit" 
+                               class="flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors">
+                                <i class="fas fa-edit"></i>
+                                <span>Modifier</span>
+                            </a>
+                            <button onclick="deleteTicket('${ticketId}', '/')"
+                                    class="flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors">
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Supprimer</span>
+                            </button>
+                            <button onclick="archiveTicket('${ticketId}')"
+                                    class="flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                <i class="fas fa-archive"></i>
+                                <span>Archiver</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Message Composer -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-medium mb-4">Ajouter un message</h2>
+                        
+                        <!-- Text Editor -->
+                        <div class="mb-6">
+                            <div id="editor-container" class="rounded-md border dark:border-gray-700 mb-3 bg-white dark:bg-gray-800">
+                                <!-- Quill editor will be mounted here -->
+                            </div>
+                            
+                            <!-- Rich Editor Controls -->
+                            <div class="flex justify-between items-center">
+                                <div class="flex space-x-2">
+                                    <button id="imageUploadBtn" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Ajouter une image">
+                                        <i class="far fa-image text-gray-600 dark:text-gray-400"></i>
+                                    </button>
+                                    <button id="fileUploadBtn" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Ajouter un fichier">
+                                        <i class="far fa-file text-gray-600 dark:text-gray-400"></i>
+                                    </button>
+                                    <div class="relative">
+                                        <button id="emojiBtn" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Ajouter un emoji">
+                                            <i class="far fa-smile text-gray-600 dark:text-gray-400"></i>
+                                        </button>
+                                        <div id="emojiPicker" class="hidden absolute bottom-full right-0 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg p-2 mb-2 z-10">
+                                            <!-- Emoji picker will be populated by JavaScript -->
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="sendMessageBtn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center gap-2">
+                                    <span>Envoyer</span>
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- File Upload Area -->
+                        <div id="uploadArea" class="border-2 border-dashed rounded-md p-6 text-center hidden">
+                            <input type="file" id="fileInput" class="hidden" multiple>
+                            <div class="mb-3">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                                <p class="text-gray-500 dark:text-gray-400">Déposez vos fichiers ici ou</p>
+                                <button id="browseFilesBtn" class="text-blue-500 hover:underline">parcourez</button>
+                            </div>
+                            
+                            <!-- Preview Area -->
+                            <div id="previewArea" class="flex flex-wrap gap-2 mt-4 justify-center">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 
-       <!-- Messages -->
-       <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md mb-8 message-container">
-           <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Messages</h2>
-           <div class="space-y-4" id="messagesContainer">
-               <!-- Les messages seront injectés ici par JavaScript -->
-           </div>
-       </div>
-
-       <!-- Formulaires d'ajout -->
-       <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md form-container">
-           <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Ajouter un message</h2>
-           
-           <!-- Message texte -->
-           <form id="textMessageForm" class="mb-6">
-               <div class="mb-2">
-                   <textarea id="messageContent" 
-                             name="content" 
-                             required
-                             class="w-full p-2 border rounded form-input dark:bg-gray-800 dark:border-gray-600 dark:text-white" 
-                             placeholder="Votre message"
-                             rows="3"></textarea>
-               </div>
-               <button id="submitMessage" 
-                       type="submit" 
-                       class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors">
-                   Envoyer le message
-               </button>
-           </form>
-
-           <!-- Upload d'image -->
-           <form id="imageMessageForm" 
-                 enctype="multipart/form-data"
-                 class="border-t border-gray-200 dark:border-gray-600 pt-6">
-               <h3 class="font-medium mb-2 text-gray-900 dark:text-white">Ajouter une image</h3>
-               <div class="mb-2">
-                   <input id="imageInput" 
-                          type="file" 
-                          name="image" 
-                          accept="image/*" 
-                          required
-                          class="form-input">
-               </div>
-               
-               <!-- Prévisualisation de l'image -->
-               <div id="previewContainer" class="mb-4 hidden">
-                   <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Prévisualisation :</p>
-                   <img id="imagePreview" src="#" alt="Prévisualisation" class="max-w-xs rounded shadow">
-               </div>
-               
-               <button type="submit" 
-                       class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors">
-                   Envoyer l'image
-               </button>
-           </form>
-       </div>
-   </div>
-
-   <!-- Scripts -->
-   <script>
-       // Récupérer l'ID du ticket depuis l'URL
-       const ticketId = window.location.pathname.split('/').pop();
-       
-       // Fonction pour charger les données du ticket
-       function loadTicketData() {
-           fetch(`/api/tickets/${ticketId}`)
-               .then(response => response.json())
-               .then(ticket => {
-                   renderTicketDetails(ticket);
-                   renderMessages(ticket.Messages || []);
-               })
-               .catch(error => {
-                   console.error('Erreur lors du chargement du ticket:', error);
-                   alert('Erreur lors du chargement du ticket.');
-               });
-       }
-       
-       // Fonction pour afficher les détails du ticket
-       function renderTicketDetails(ticket) {
-           const container = document.getElementById('ticketDetails');
-           
-           let tagsHtml = '';
-           if (ticket.tags && ticket.tags.length > 0) {
-               tagsHtml = '<div class="flex flex-wrap gap-2 mb-4">';
-               ticket.tags.forEach(tag => {
-                   tagsHtml += `
-                       <span class="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm tag">
-                           ${tag}
-                       </span>
-                   `;
-               });
-               tagsHtml += '</div>';
-           }
-           
-           const createdDate = new Date(ticket.createdAt).toLocaleString('fr-FR', {
-               year: 'numeric',
-               month: 'long',
-               day: 'numeric',
-               hour: '2-digit',
-               minute: '2-digit'
-           });
-           
-           let modifiedHtml = '';
-           if (ticket.lastModifiedBy) {
-               const modifiedDate = new Date(ticket.lastModifiedAt).toLocaleString('fr-FR', {
-                   year: 'numeric',
-                   month: 'long',
-                   day: 'numeric',
-                   hour: '2-digit',
-                   minute: '2-digit'
-               });
-               
-               modifiedHtml = `
-                   <br>
-                   Modifié le ${modifiedDate}
-                   par ${ticket.lastModifiedBy}
-               `;
-           }
-           
-           container.innerHTML = `
-               <div class="flex justify-between items-start">
-                   <div>
-                       <h1 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-                           Ticket de ${ticket.caller}
-                       </h1>
-                       <p class="text-gray-600 dark:text-gray-300 mb-4">${ticket.reason}</p>
-                       ${tagsHtml}
-                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                           Créé le ${createdDate}
-                           par ${ticket.createdBy}
-                           ${modifiedHtml}
-                       </p>
-                   </div>
-                   <div class="flex gap-2">
-                       <a href="/ticket/${ticket.id}/edit" 
-                          class="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700 rounded-md text-sm font-medium transition-colors">
-                           Modifier
-                       </a>
-                       <button onclick="deleteTicket('${ticket.id}', '/')"
-                               class="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-800 dark:text-red-200 dark:hover:bg-red-700 rounded-md text-sm font-medium transition-colors">
-                           Supprimer
-                       </button>
-                       <button onclick="archiveTicket('${ticket.id}')"
-                               class="px-3 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 rounded-md text-sm font-medium transition-colors">
-                           Archiver
-                       </button>
-                   </div>
-               </div>
-           `;
-       }
-       
-       // Fonction pour afficher les messages
-       function renderMessages(messages) {
-           const container = document.getElementById('messagesContainer');
-           
-           if (messages.length === 0) {
-               container.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Aucun message pour ce ticket.</p>';
-               return;
-           }
-           
-           container.innerHTML = '';
-           messages.forEach(message => {
-               const messageDiv = document.createElement('div');
-               messageDiv.className = 'border-b border-gray-200 dark:border-gray-600 pb-4 message';
-               
-               const messageDate = new Date(message.createdAt).toLocaleString('fr-FR', {
-                   year: 'numeric',
-                   month: 'long',
-                   day: 'numeric',
-                   hour: '2-digit',
-                   minute: '2-digit'
-               });
-               
-               let contentHtml = '';
-               if (message.type === 'text') {
-                   contentHtml = `<p class="whitespace-pre-wrap text-gray-700 dark:text-gray-300">${message.content}</p>`;
-               } else {
-                   contentHtml = `<img src="${message.content}" alt="Image" class="max-w-md rounded shadow message-image">`;
-               }
-               
-               messageDiv.innerHTML = `
-                   <div class="flex items-center gap-2 mb-2">
-                       <span class="font-medium text-gray-900 dark:text-white">${message.author}</span>
-                       <span class="text-xs text-gray-500 dark:text-gray-400">
-                           ${messageDate}
-                       </span>
-                   </div>
-                   ${contentHtml}
-               `;
-               
-               container.appendChild(messageDiv);
-           });
-       }
-       
-       // Fonction pour envoyer un message texte
-       function handleTextMessageSubmit(event) {
-           event.preventDefault();
-           
-           const content = document.getElementById('messageContent').value;
-           
-           fetch(`/api/tickets/${ticketId}/messages`, {
-               method: 'POST',
-               headers: {
-                   'Content-Type': 'application/json'
-               },
-               body: JSON.stringify({ content })
-           })
-           .then(response => {
-               if (response.ok) {
-                   document.getElementById('messageContent').value = '';
-                   loadTicketData();
-               } else {
-                   throw new Error('Erreur lors de l\'envoi du message');
-               }
-           })
-           .catch(error => {
-               console.error('Erreur:', error);
-               alert('Erreur lors de l\'envoi du message.');
-           });
-       }
-       
-       // Fonction pour envoyer une image
-       function handleImageMessageSubmit(event) {
-           event.preventDefault();
-           
-           const imageInput = document.getElementById('imageInput');
-           if (!imageInput.files || imageInput.files.length === 0) {
-               alert('Veuillez sélectionner une image.');
-               return;
-           }
-           
-           const formData = new FormData();
-           formData.append('image', imageInput.files[0]);
-           
-           fetch(`/api/tickets/${ticketId}/messages`, {
-               method: 'POST',
-               body: formData
-           })
-           .then(response => {
-               if (response.ok) {
-                   imageInput.value = '';
-                   document.getElementById('previewContainer').classList.add('hidden');
-                   loadTicketData();
-               } else {
-                   throw new Error('Erreur lors de l\'envoi de l\'image');
-               }
-           })
-           .catch(error => {
-               console.error('Erreur:', error);
-               alert('Erreur lors de l\'envoi de l\'image.');
-           });
-       }
-       
-       // Fonction pour prévisualiser l'image
-       function previewImage() {
-           const imageInput = document.getElementById('imageInput');
-           const previewContainer = document.getElementById('previewContainer');
-           const imagePreview = document.getElementById('imagePreview');
-           
-           if (imageInput.files && imageInput.files[0]) {
-               const reader = new FileReader();
-               
-               reader.onload = function(e) {
-                   imagePreview.src = e.target.result;
-                   previewContainer.classList.remove('hidden');
-               };
-               
-               reader.readAsDataURL(imageInput.files[0]);
-           } else {
-               previewContainer.classList.add('hidden');
-           }
-       }
-       
-       // Fonction pour archiver un ticket
-       function archiveTicket(ticketId) {
-           if (confirm('Êtes-vous sûr de vouloir archiver ce ticket ?')) {
-               fetch(`/api/tickets/${ticketId}/archive`, {
-                   method: 'POST'
-               })
-               .then(response => {
-                   if (response.ok) {
-                       window.location.href = '/';
-                   } else {
-                       throw new Error('Erreur lors de l\'archivage du ticket');
-                   }
-               })
-               .catch(error => {
-                   console.error('Erreur:', error);
-                   alert('Erreur lors de l\'archivage du ticket.');
-               });
-           }
-       }
-       
-       // Fonction pour supprimer un ticket
-       function deleteTicket(ticketId, redirectUrl = '/') {
-           if (confirm('Êtes-vous sûr de vouloir supprimer ce ticket ? Cette action est irréversible.')) {
-               fetch(`/api/tickets/${ticketId}/delete`, {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/json'
-                   }
-               })
-               .then(response => {
-                   if (response.ok) {
-                       window.location.href = redirectUrl;
-                   } else {
-                       throw new Error('Erreur lors de la suppression du ticket');
-                   }
-               })
-               .catch(error => {
-                   console.error('Erreur:', error);
-                   alert('Erreur lors de la suppression du ticket.');
-               });
-           }
-       }
-       
-       // Initialiser la page
-       document.addEventListener('DOMContentLoaded', () => {
-           loadTicketData();
-           document.getElementById('textMessageForm').addEventListener('submit', handleTextMessageSubmit);
-           document.getElementById('imageMessageForm').addEventListener('submit', handleImageMessageSubmit);
-           document.getElementById('imageInput').addEventListener('change', previewImage);
-       });
-   </script>
-   <script src="/js/common.js"></script>
-   <script src="/js/ticketFunctions.js"></script>
-   <script src="/js/pages/ticket.js"></script>
-   <script src="/js/themeManager.js"></script>
+    <!-- Scripts -->
+    <!-- Drag & Drop library: Sortable.js -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Rich text editor: Quill -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <!-- Core JavaScript -->
+    <script src="/js/common.js"></script>
+    <script src="/js/themeManager.js"></script>
+    <script src="/js/apiClient.js"></script>
+    <script src="/js/ticketFunctions.js"></script>
+    <!-- Modern Ticket Page JS -->
+    <script src="/js/pages/ticket.js"></script>
 </body>
 </html> 
