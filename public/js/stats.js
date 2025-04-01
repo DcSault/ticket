@@ -390,6 +390,9 @@ function filterDataByDate() {
     
     console.log(`Tickets dans la plage: ${filteredDetailedData.length}`);
 
+    // Afficher un message d'information sur la plage de dates
+    updateDateRangeInfo(startDate, endDate, filteredDetailedData.length);
+
     // 2. Créer un nouvel objet de statistiques filtrées
     filteredStats = {
         detailedData: filteredDetailedData,
@@ -472,41 +475,23 @@ function filterDataByDate() {
 }
 
 function updatePeriod(period) {
-    currentPeriod = period;
-    const now = new Date();
-
-    ['day', 'week', 'month'].forEach(p => {
-        const btn = document.getElementById(`btn${p.charAt(0).toUpperCase() + p.slice(1)}`);
-        if (btn) {
-            btn.classList.remove('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
-            btn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
+    console.log(`Mise à jour de la période: ${period}`);
+    
+    // Mettre à jour le bouton actif
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        if (btn.getAttribute('data-period') === period) {
+            btn.classList.add('active-period', 'bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-300', 'border-blue-600', 'dark:border-blue-500');
+            btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
+        } else {
+            btn.classList.remove('active-period', 'bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-300', 'border-blue-600', 'dark:border-blue-500');
+            btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
         }
     });
-
-    const selectedBtn = document.getElementById(`btn${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if (selectedBtn) {
-        selectedBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
-        selectedBtn.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
-    }
-
-    let startDate = new Date(now);
-    const endDate = new Date(now);
-
-    switch (period) {
-        case 'day':
-            startDate.setDate(now.getDate() - 29);
-            break;
-        case 'week':
-            startDate.setDate(now.getDate() - 28);
-            break;
-        case 'month':
-            startDate.setMonth(now.getMonth() - 11);
-            break;
-    }
-
-    document.getElementById('startDate').valueAsDate = startDate;
-    document.getElementById('endDate').valueAsDate = endDate;
-
+    
+    // Mettre à jour la période active
+    activePeriod = period;
+    
+    // Filtrer les données avec la période actuelle et les dates sélectionnées
     filterDataByDate();
 }
 
@@ -544,11 +529,44 @@ function initializeStats(data) {
     // Initialiser également les statistiques filtrées
     filteredStats = JSON.parse(JSON.stringify(stats));
     
+    // Déterminer la plage de dates complète
+    const { firstDate, lastDate } = getMinMaxDates();
+    
+    // Mettre à jour les champs de date pour afficher toutes les données
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    
+    if (startDateInput && endDateInput) {
+        startDateInput.valueAsDate = firstDate;
+        endDateInput.valueAsDate = lastDate;
+    }
+    
     // Mettre à jour tous les graphiques
     updateAllCharts();
     
-    // Par défaut, afficher les statistiques quotidiennes
-    updatePeriod('day');
+    // Par défaut, afficher les statistiques quotidiennes mais ne pas réinitialiser la plage de dates
+    currentPeriod = 'day';
+    updateUIForPeriod(currentPeriod);
+    
+    // Filtrer les données avec la plage de dates complète
+    filterDataByDate();
+}
+
+// Fonction pour mettre à jour l'UI lorsqu'on change de période sans changer la plage de dates
+function updateUIForPeriod(period) {
+    ['day', 'week', 'month'].forEach(p => {
+        const btn = document.getElementById(`btn${p.charAt(0).toUpperCase() + p.slice(1)}`);
+        if (btn) {
+            btn.classList.remove('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
+            btn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
+        }
+    });
+
+    const selectedBtn = document.getElementById(`btn${period.charAt(0).toUpperCase() + period.slice(1)}`);
+    if (selectedBtn) {
+        selectedBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
+        selectedBtn.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
+    }
 }
 
 // Fonction pour calculer les données de blocage pour une période
@@ -648,6 +666,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Ajouter un bouton de réinitialisation
+    const dateControlsElem = document.querySelector('.date-controls');
+    if (dateControlsElem) {
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'reset-dates-btn ml-2 inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 font-medium text-xs rounded-md shadow-sm hover:bg-blue-100 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-gray-800 transition-colors';
+        resetBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>Tous les tickets';
+        resetBtn.addEventListener('click', resetToAllData);
+        dateControlsElem.appendChild(resetBtn);
+    }
+
     // Afficher le titre de la section des statistiques pour inclure le total global
     const statsHeader = document.querySelector('.stats-header h2');
     if (statsHeader) {
@@ -664,4 +693,155 @@ document.addEventListener('DOMContentLoaded', function() {
         Chart.defaults.color = '#ffffff';
         Chart.defaults.borderColor = '#374151';
     }
+
+    // Ajouter les boutons de période
+    const periodBtns = document.querySelectorAll('.period-btn');
+    
+    // Mise à jour des styles des boutons de période
+    periodBtns.forEach(btn => {
+        // Ajouter des classes de style Tailwind aux boutons
+        btn.className = 'period-btn px-3 py-1.5 mx-1 border rounded-md text-sm font-medium transition-colors bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600';
+        
+        // Si c'est le bouton jour (par défaut), le marquer comme actif
+        if (btn.getAttribute('data-period') === 'day') {
+            btn.classList.add('active-period', 'bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-300', 'border-blue-600', 'dark:border-blue-500');
+            btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
+        }
+        
+        btn.addEventListener('click', function() {
+            const period = this.getAttribute('data-period');
+            updatePeriod(period);
+        });
+    });
 });
+
+/**
+ * Réinitialise la plage de dates pour afficher tous les tickets
+ */
+function resetToAllData() {
+    try {
+        // Vérifier si les statistiques sont disponibles
+        if (!stats || !stats.detailedData || stats.detailedData.length === 0) {
+            console.error('Aucune donnée disponible pour réinitialiser la plage de dates');
+            return;
+        }
+
+        // Trouver les dates min et max
+        const { firstDate, lastDate } = getMinMaxDates(stats);
+        
+        if (!firstDate || !lastDate) {
+            console.error('Impossible de déterminer les dates limites');
+            return;
+        }
+
+        // Mettre à jour les champs de date
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        startDateInput.valueAsDate = firstDate;
+        endDateInput.valueAsDate = lastDate;
+        
+        console.log(`Plage réinitialisée du ${firstDate.toLocaleDateString()} au ${lastDate.toLocaleDateString()}`);
+        
+        // Mettre à jour les statistiques
+        filterDataByDate();
+        
+    } catch (error) {
+        console.error('Erreur lors de la réinitialisation de la plage de dates:', error);
+    }
+}
+
+/**
+ * Obtient la date la plus ancienne et la plus récente des tickets
+ * @returns {Object} Un objet contenant firstDate et lastDate
+ */
+function getMinMaxDates() {
+    if (!stats || !stats.detailedData || stats.detailedData.length === 0) {
+        console.error("Pas de données disponibles pour déterminer les dates");
+        return { 
+            firstDate: new Date(), 
+            lastDate: new Date() 
+        };
+    }
+    
+    try {
+        // Convertir toutes les dates en objets Date et filtrer les dates invalides
+        const dates = stats.detailedData
+            .map(ticket => new Date(ticket.date))
+            .filter(date => !isNaN(date.getTime()));
+        
+        if (dates.length === 0) {
+            console.error("Aucune date valide trouvée");
+            return { 
+                firstDate: new Date(), 
+                lastDate: new Date() 
+            };
+        }
+        
+        // Trier les dates et prendre la première et la dernière
+        dates.sort((a, b) => a - b);
+        const firstDate = dates[0];
+        
+        // Utiliser la date actuelle comme date de fin pour inclure les tickets récents
+        const lastDate = new Date();
+        
+        console.log(`Plage de dates détectée: du ${firstDate.toLocaleDateString()} au ${lastDate.toLocaleDateString()}`);
+        
+        return { firstDate, lastDate };
+    } catch (error) {
+        console.error("Erreur lors de la détermination des dates:", error);
+        return { 
+            firstDate: new Date(), 
+            lastDate: new Date() 
+        };
+    }
+}
+
+/**
+ * Affiche un message d'information sur la plage de dates
+ * @param {Date} startDate - Date de début
+ * @param {Date} endDate - Date de fin
+ * @param {number} ticketCount - Nombre de tickets dans la plage
+ */
+function updateDateRangeInfo(startDate, endDate, ticketCount) {
+    const dateRangeInfo = document.querySelector('.date-range-info');
+    if (!dateRangeInfo) {
+        // Créer un élément pour afficher l'information
+        const dateControlsContainer = document.querySelector('.date-controls')?.parentNode;
+        if (dateControlsContainer) {
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'date-range-info mt-2 p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-sm';
+            dateControlsContainer.appendChild(infoDiv);
+            
+            // Mettre à jour le message
+            updateDateRangeMessage(infoDiv, startDate, endDate, ticketCount);
+        }
+    } else {
+        // Mettre à jour le message existant
+        updateDateRangeMessage(dateRangeInfo, startDate, endDate, ticketCount);
+    }
+}
+
+/**
+ * Met à jour le message d'information sur la plage de dates
+ * @param {HTMLElement} element - Élément HTML où afficher le message
+ * @param {Date} startDate - Date de début
+ * @param {Date} endDate - Date de fin
+ * @param {number} ticketCount - Nombre de tickets dans la plage
+ */
+function updateDateRangeMessage(element, startDate, endDate, ticketCount) {
+    // Formater les dates pour le message
+    const startStr = startDate.toLocaleDateString('fr-FR');
+    const endStr = endDate.toLocaleDateString('fr-FR');
+    
+    // Calculer la durée de la plage en jours
+    const oneDay = 24 * 60 * 60 * 1000; // millisecondes dans une journée
+    const durationDays = Math.round(Math.abs((endDate - startDate) / oneDay)) + 1;
+    
+    // Créer le message
+    element.innerHTML = `
+        <span class="font-semibold">Plage affichée:</span> ${startStr} à ${endStr} (${durationDays} jours)
+        <span class="font-semibold ml-4">Tickets:</span> ${ticketCount} ${ticketCount === 1 ? 'ticket' : 'tickets'}
+        ${ticketCount === 0 ? '<span class="text-red-500 ml-2">(Aucun ticket dans cette plage)</span>' : ''}
+    `;
+}
