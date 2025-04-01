@@ -835,6 +835,82 @@ app.post('/admin/create-ticket', async (req, res) => {
     }
 });
 
+// Route API pour ajuster l'heure des tickets (admin)
+app.post('/api/admin/adjust-time', async (req, res) => {
+  try {
+    const { startDate, endDate, hoursToAdjust } = req.body;
+    
+    if (!startDate || !endDate || hoursToAdjust === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Paramètres manquants: startDate, endDate et hoursToAdjust sont requis' 
+      });
+    }
+    
+    // Vérifier si le décalage est valide
+    if (!Number.isInteger(hoursToAdjust) || Math.abs(hoursToAdjust) > 24) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'hoursToAdjust doit être un nombre entier entre -24 et 24' 
+      });
+    }
+    
+    // Récupérer les tickets de la période
+    const tickets = await Ticket.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [new Date(startDate), new Date(endDate)]
+        }
+      }
+    });
+    
+    // Aucun ticket à ajuster
+    if (tickets.length === 0) {
+      return res.json({ 
+        success: true, 
+        count: 0, 
+        message: 'Aucun ticket trouvé pour cette période' 
+      });
+    }
+    
+    // Mettre à jour les tickets un par un
+    for (const ticket of tickets) {
+      const currentDate = new Date(ticket.createdAt);
+      currentDate.setHours(currentDate.getHours() + hoursToAdjust);
+      
+      await ticket.update({
+        createdAt: currentDate
+      });
+      
+      // Si le ticket a des messages, ajuster également leurs dates
+      const messages = await Message.findAll({
+        where: { TicketId: ticket.id }
+      });
+      
+      for (const message of messages) {
+        const messageDate = new Date(message.createdAt);
+        messageDate.setHours(messageDate.getHours() + hoursToAdjust);
+        
+        await message.update({
+          createdAt: messageDate
+        });
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      count: tickets.length, 
+      message: `${tickets.length} tickets ont été ajustés de ${hoursToAdjust} heure(s)` 
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'ajustement des heures:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur serveur lors de l\'ajustement des heures' 
+    });
+  }
+});
+
 // Démarrage du serveur
 async function startServer() {
     try {
@@ -853,7 +929,7 @@ async function startServer() {
         await fsPromises.mkdir(path.join(__dirname, 'public/img'), { recursive: true });
         console.log('✅ Dossiers pour fichiers statiques vérifiés');
 
-        const VERSION = '2.0.5';
+        const VERSION = '2.0.6';
         console.log(`🚀 Version du serveur : ${VERSION}`);
 
         app.listen(process.env.PORT, () => {

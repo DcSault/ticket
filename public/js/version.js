@@ -6,7 +6,7 @@
 
 // Configuration de la version
 const APP_CONFIG = {
-    version: '2.0.5',
+    version: '2.0.6',
     developer: 'Sault',
     githubUrl: 'https://github.com/DcSault'
 };

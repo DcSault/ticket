@@ -28,7 +28,7 @@ function formatDate(dateValue) {
 /**
  * Crée et affiche une notification
  * @param {string} message - Le message à afficher
- * @param {string} type - Le type de notification ('success', 'error', 'warning')
+ * @param {string} type - Le type de notification ('success', 'error', 'warning', 'info')
  * @param {number} duration - La durée d'affichage en millisecondes
  */
 function showNotification(message, type = 'success', duration = 3000) {
@@ -40,6 +40,28 @@ function showNotification(message, type = 'success', duration = 3000) {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
+    
+    // Configuration des styles selon le type
+    let bgColor, textColor;
+    switch (type) {
+        case 'error':
+            bgColor = 'bg-red-100 dark:bg-red-900/30';
+            textColor = 'text-red-800 dark:text-red-200';
+            break;
+        case 'warning':
+            bgColor = 'bg-yellow-100 dark:bg-yellow-900/30';
+            textColor = 'text-yellow-800 dark:text-yellow-200';
+            break;
+        case 'info':
+            bgColor = 'bg-blue-100 dark:bg-blue-900/30';
+            textColor = 'text-blue-800 dark:text-blue-200';
+            break;
+        default: // success
+            bgColor = 'bg-green-100 dark:bg-green-900/30';
+            textColor = 'text-green-800 dark:text-green-200';
+    }
+    
+    notification.classList.add(bgColor, textColor, 'px-4', 'py-3', 'rounded', 'shadow-lg', 'fixed', 'top-4', 'right-4', 'z-50', 'transition-opacity', 'duration-300');
     
     // Ajoute la notification au DOM
     document.body.appendChild(notification);
