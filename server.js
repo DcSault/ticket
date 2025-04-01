@@ -570,6 +570,8 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
 
 // Fonction pour générer les statistiques
 async function processStats(tickets) {
+    console.log(`Traitement de ${tickets.length} tickets pour les statistiques`);
+    
     const now = new Date();
     now.setHours(23, 59, 59, 999);
     
@@ -582,72 +584,34 @@ async function processStats(tickets) {
         topCallers: []
     };
 
-    // Create maps for daily counts
+    // Préparer les structures pour les comptages
     const dailyCounts = new Map();
     const dailyGLPICounts = new Map();
     const dailyBlockingCounts = new Map();
+    
+    const weekCounts = new Map();
+    const weekGLPICounts = new Map();
+    const weekBlockingCounts = new Map();
+    
+    const monthCounts = new Map();
+    const monthGLPICounts = new Map();
+    const monthBlockingCounts = new Map();
 
-    // Initialize last 30 days
+    // Initialiser les derniers 30 jours
     for (let i = 29; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         date.setHours(0, 0, 0, 0);
         const dateStr = date.toLocaleDateString('fr-FR');
+        
         dailyCounts.set(dateStr, 0);
         dailyGLPICounts.set(dateStr, 0);
         dailyBlockingCounts.set(dateStr, 0);
+        
         stats.day.labels.push(dateStr);
     }
 
-    // Process each ticket
-    const tagStats = {};
-    const callerStats = {};
-
-    tickets.forEach(ticket => {
-        const ticketDate = new Date(ticket.createdAt);
-        ticketDate.setHours(0, 0, 0, 0);
-        const dateStr = ticketDate.toLocaleDateString('fr-FR');
-
-        stats.detailedData.push({
-            id: ticket.id,
-            date: ticket.createdAt,
-            caller: ticket.caller,
-            tags: ticket.tags,
-            isGLPI: ticket.isGLPI,
-            isBlocking: ticket.isBlocking
-        });
-
-        if (dailyCounts.has(dateStr)) {
-            dailyCounts.set(dateStr, (dailyCounts.get(dateStr) || 0) + 1);
-            if (ticket.isGLPI) {
-                dailyGLPICounts.set(dateStr, (dailyGLPICounts.get(dateStr) || 0) + 1);
-            }
-            if (ticket.isBlocking) {
-                dailyBlockingCounts.set(dateStr, (dailyBlockingCounts.get(dateStr) || 0) + 1);
-            }
-        }
-
-        // Count tags
-        if (ticket.tags && Array.isArray(ticket.tags)) {
-            ticket.tags.forEach(tag => {
-                tagStats[tag] = (tagStats[tag] || 0) + 1;
-            });
-        }
-
-        // Count callers
-        if (ticket.caller) {
-            callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
-        }
-    });
-
-    // Fill day data arrays
-    stats.day.labels.forEach(dateStr => {
-        stats.day.data.push(dailyCounts.get(dateStr) || 0);
-        stats.day.glpiData.push(dailyGLPICounts.get(dateStr) || 0);
-        stats.day.blockingData.push(dailyBlockingCounts.get(dateStr) || 0);
-    });
-
-    // Calculate weekly statistics
+    // Initialiser les 4 dernières semaines
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1);
     weekStart.setHours(0, 0, 0, 0);
@@ -661,42 +625,146 @@ async function processStats(tickets) {
         const weekLabel = `${start.toLocaleDateString('fr-FR')} - ${end.toLocaleDateString('fr-FR')}`;
         stats.week.labels.push(weekLabel);
         
-        const weekTickets = tickets.filter(ticket => {
-            const ticketDate = new Date(ticket.createdAt);
-            return ticketDate >= start && ticketDate <= end;
-        });
-        
-        stats.week.data.push(weekTickets.length);
-        stats.week.glpiData.push(weekTickets.filter(t => t.isGLPI).length);
-        stats.week.blockingData.push(weekTickets.filter(t => t.isBlocking).length);
+        weekCounts.set(weekLabel, 0);
+        weekGLPICounts.set(weekLabel, 0);
+        weekBlockingCounts.set(weekLabel, 0);
     }
 
-    // Calculate monthly statistics
+    // Initialiser les 12 derniers mois
     for (let i = 11; i >= 0; i--) {
         const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-        
         const monthLabel = monthStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
         stats.month.labels.push(monthLabel);
         
-        const monthTickets = tickets.filter(ticket => {
-            const ticketDate = new Date(ticket.createdAt);
-            return ticketDate >= monthStart && ticketDate <= monthEnd;
-        });
-        
-        stats.month.data.push(monthTickets.length);
-        stats.month.glpiData.push(monthTickets.filter(t => t.isGLPI).length);
-        stats.month.blockingData.push(monthTickets.filter(t => t.isBlocking).length);
+        monthCounts.set(monthLabel, 0);
+        monthGLPICounts.set(monthLabel, 0);
+        monthBlockingCounts.set(monthLabel, 0);
     }
 
-    // Calculate totals
+    // Traiter chaque ticket
+    const tagStats = {};
+    const callerStats = {};
+
+    tickets.forEach(ticket => {
+        // Ajouter ce ticket aux données détaillées
+        stats.detailedData.push({
+            id: ticket.id,
+            date: ticket.createdAt,
+            caller: ticket.caller,
+            tags: ticket.tags,
+            isGLPI: ticket.isGLPI,
+            isBlocking: ticket.isBlocking
+        });
+
+        // Traitement pour les statistiques quotidiennes
+        const ticketDate = new Date(ticket.createdAt);
+        const dateStr = ticketDate.toLocaleDateString('fr-FR');
+        
+        if (dailyCounts.has(dateStr)) {
+            dailyCounts.set(dateStr, dailyCounts.get(dateStr) + 1);
+            
+            if (ticket.isGLPI) {
+                dailyGLPICounts.set(dateStr, dailyGLPICounts.get(dateStr) + 1);
+            }
+            
+            if (ticket.isBlocking) {
+                dailyBlockingCounts.set(dateStr, dailyBlockingCounts.get(dateStr) + 1);
+            }
+        }
+
+        // Traitement pour les statistiques hebdomadaires
+        for (const weekLabel of weekCounts.keys()) {
+            const [startStr, endStr] = weekLabel.split(' - ');
+            const weekStartDate = new Date(startStr.split('/').reverse().join('-'));
+            const weekEndDate = new Date(endStr.split('/').reverse().join('-'));
+            weekEndDate.setHours(23, 59, 59, 999);
+            
+            if (ticketDate >= weekStartDate && ticketDate <= weekEndDate) {
+                weekCounts.set(weekLabel, weekCounts.get(weekLabel) + 1);
+                
+                if (ticket.isGLPI) {
+                    weekGLPICounts.set(weekLabel, weekGLPICounts.get(weekLabel) + 1);
+                }
+                
+                if (ticket.isBlocking) {
+                    weekBlockingCounts.set(weekLabel, weekBlockingCounts.get(weekLabel) + 1);
+                }
+                
+                break; // Un ticket ne peut être que dans une seule semaine
+            }
+        }
+
+        // Traitement pour les statistiques mensuelles
+        for (const monthLabel of monthCounts.keys()) {
+            const [month, year] = monthLabel.split(' ');
+            const monthIndex = [
+                'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+            ].indexOf(month.toLowerCase());
+            
+            if (monthIndex !== -1) {
+                const monthStartDate = new Date(parseInt(year), monthIndex, 1);
+                const monthEndDate = new Date(parseInt(year), monthIndex + 1, 0);
+                monthEndDate.setHours(23, 59, 59, 999);
+                
+                if (ticketDate >= monthStartDate && ticketDate <= monthEndDate) {
+                    monthCounts.set(monthLabel, monthCounts.get(monthLabel) + 1);
+                    
+                    if (ticket.isGLPI) {
+                        monthGLPICounts.set(monthLabel, monthGLPICounts.get(monthLabel) + 1);
+                    }
+                    
+                    if (ticket.isBlocking) {
+                        monthBlockingCounts.set(monthLabel, monthBlockingCounts.get(monthLabel) + 1);
+                    }
+                    
+                    break; // Un ticket ne peut être que dans un seul mois
+                }
+            }
+        }
+
+        // Compter les tags
+        if (ticket.tags && Array.isArray(ticket.tags)) {
+            ticket.tags.forEach(tag => {
+                if (tag) {
+                    tagStats[tag] = (tagStats[tag] || 0) + 1;
+                }
+            });
+        }
+
+        // Compter les appelants
+        if (ticket.caller) {
+            callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
+        }
+    });
+
+    // Remplir les tableaux de données
+    stats.day.labels.forEach(dateStr => {
+        stats.day.data.push(dailyCounts.get(dateStr) || 0);
+        stats.day.glpiData.push(dailyGLPICounts.get(dateStr) || 0);
+        stats.day.blockingData.push(dailyBlockingCounts.get(dateStr) || 0);
+    });
+
+    stats.week.labels.forEach(weekLabel => {
+        stats.week.data.push(weekCounts.get(weekLabel) || 0);
+        stats.week.glpiData.push(weekGLPICounts.get(weekLabel) || 0);
+        stats.week.blockingData.push(weekBlockingCounts.get(weekLabel) || 0);
+    });
+
+    stats.month.labels.forEach(monthLabel => {
+        stats.month.data.push(monthCounts.get(monthLabel) || 0);
+        stats.month.glpiData.push(monthGLPICounts.get(monthLabel) || 0);
+        stats.month.blockingData.push(monthBlockingCounts.get(monthLabel) || 0);
+    });
+
+    // Calculer les totaux
     ['day', 'week', 'month'].forEach(period => {
         stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
         stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
         stats[period].blocking = stats[period].blockingData.reduce((a, b) => a + b, 0);
     });
 
-    // Calculate top tags and callers
+    // Calculer les top tags et appelants
     stats.topTags = Object.entries(tagStats)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
@@ -707,6 +775,7 @@ async function processStats(tickets) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
+    console.log(`Statistiques générées: ${stats.detailedData.length} tickets traités`);
     return stats;
 }
 
@@ -833,82 +902,6 @@ app.post('/admin/create-ticket', async (req, res) => {
         console.error('Erreur lors de la création du ticket:', error);
         res.status(500).send('Erreur serveur');
     }
-});
-
-// Route API pour ajuster l'heure des tickets (admin)
-app.post('/api/admin/adjust-time', async (req, res) => {
-  try {
-    const { startDate, endDate, hoursToAdjust } = req.body;
-    
-    if (!startDate || !endDate || hoursToAdjust === undefined) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Paramètres manquants: startDate, endDate et hoursToAdjust sont requis' 
-      });
-    }
-    
-    // Vérifier si le décalage est valide
-    if (!Number.isInteger(hoursToAdjust) || Math.abs(hoursToAdjust) > 24) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'hoursToAdjust doit être un nombre entier entre -24 et 24' 
-      });
-    }
-    
-    // Récupérer les tickets de la période
-    const tickets = await Ticket.findAll({
-      where: {
-        createdAt: {
-          [Op.between]: [new Date(startDate), new Date(endDate)]
-        }
-      }
-    });
-    
-    // Aucun ticket à ajuster
-    if (tickets.length === 0) {
-      return res.json({ 
-        success: true, 
-        count: 0, 
-        message: 'Aucun ticket trouvé pour cette période' 
-      });
-    }
-    
-    // Mettre à jour les tickets un par un
-    for (const ticket of tickets) {
-      const currentDate = new Date(ticket.createdAt);
-      currentDate.setHours(currentDate.getHours() + hoursToAdjust);
-      
-      await ticket.update({
-        createdAt: currentDate
-      });
-      
-      // Si le ticket a des messages, ajuster également leurs dates
-      const messages = await Message.findAll({
-        where: { TicketId: ticket.id }
-      });
-      
-      for (const message of messages) {
-        const messageDate = new Date(message.createdAt);
-        messageDate.setHours(messageDate.getHours() + hoursToAdjust);
-        
-        await message.update({
-          createdAt: messageDate
-        });
-      }
-    }
-    
-    res.json({ 
-      success: true, 
-      count: tickets.length, 
-      message: `${tickets.length} tickets ont été ajustés de ${hoursToAdjust} heure(s)` 
-    });
-  } catch (error) {
-    console.error('Erreur lors de l\'ajustement des heures:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur lors de l\'ajustement des heures' 
-    });
-  }
 });
 
 // Démarrage du serveur

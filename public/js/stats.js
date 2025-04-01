@@ -279,9 +279,47 @@ function updateStats(data) {
 }
 
 function updateAllCharts() {
+    // Vérifier que nous avons bien des données pour la période actuelle
     const data = filteredStats[currentPeriod];
-    if (!data) return;
+    if (!data) {
+        console.error(`Pas de données pour la période ${currentPeriod}`);
+        return;
+    }
     
+    console.log(`Mise à jour des graphiques pour la période ${currentPeriod}`);
+    console.log(`Données utilisées pour les graphiques:`, data);
+    
+    // Si la période n'a pas de données, n'afficher aucun ticket
+    if (data.labels.length === 0) {
+        document.getElementById('totalTickets').textContent = '0';
+        document.getElementById('totalGLPI').textContent = '0';
+        document.getElementById('totalBlocking').textContent = '0';
+        document.getElementById('avgTicketsPerDay').textContent = '0';
+        
+        // Reset les graphiques avec des données vides
+        updateMainChart({
+            labels: [],
+            data: [],
+            glpiData: [],
+            blockingData: []
+        });
+        
+        updateGLPIChart({
+            glpiData: [0],
+            data: [0]
+        });
+        
+        updateBlockingChart(data);
+        
+        // Effacer les graphiques de top callers et tags
+        const emptyData = [];
+        updateCallersChart(emptyData);
+        updateTagsChart(emptyData);
+        
+        return;
+    }
+    
+    // Mettre à jour les graphiques avec les données filtrées
     updateMainChart(data);
     updateGLPIChart(data);
     updateBlockingChart(data);
@@ -299,50 +337,79 @@ function filterDataByDate() {
         return;
     }
 
+    console.log(`Filtrage des données du ${startDate.toLocaleDateString()} au ${endDate.toLocaleDateString()}`);
+
+    // Filtrer d'abord les données détaillées
     filteredStats = {
         ...stats,
-        [currentPeriod]: {
-            labels: [],
-            data: [],
-            glpiData: [],
-            blockingData: []
-        },
         detailedData: stats.detailedData.filter(ticket => {
             const ticketDate = new Date(ticket.date);
             return ticketDate >= startDate && ticketDate <= endDate;
         })
     };
 
-    stats[currentPeriod].labels.forEach((label, index) => {
-        let date;
-        let isInRange = false;
+    // Traiter chaque période (jour, semaine, mois)
+    ['day', 'week', 'month'].forEach(period => {
+        filteredStats[period] = {
+            labels: [],
+            data: [],
+            glpiData: [],
+            blockingData: []
+        };
 
-        if (currentPeriod === 'week' && label.includes(' - ')) {
-            const [startStr] = label.split(' - ');
-            date = new Date(startStr.split('/').reverse().join('-'));
-        } else if (currentPeriod === 'month') {
-            const [month, year] = label.split(' ');
-            date = new Date(Date.parse(`${month} 1, ${year}`));
-        } else {
-            date = new Date(label.split('/').reverse().join('-'));
-        }
+        stats[period].labels.forEach((label, index) => {
+            let date;
+            let isInRange = false;
 
-        if (date >= startDate && date <= endDate) {
-            isInRange = true;
-        }
+            // Convertir l'étiquette en date en fonction du format de la période
+            if (period === 'day') {
+                // Format: JJ/MM/AAAA
+                date = new Date(label.split('/').reverse().join('-'));
+                isInRange = date >= startDate && date <= endDate;
+            } 
+            else if (period === 'week' && label.includes(' - ')) {
+                // Format: JJ/MM/AAAA - JJ/MM/AAAA
+                const [startStr, endStr] = label.split(' - ');
+                const weekStartDate = new Date(startStr.split('/').reverse().join('-'));
+                const weekEndDate = new Date(endStr.split('/').reverse().join('-'));
+                
+                // Une semaine est dans la plage si elle chevauche la plage de dates sélectionnée
+                isInRange = (weekStartDate <= endDate && weekEndDate >= startDate);
+            } 
+            else if (period === 'month') {
+                // Format: mois AAAA (ex: janvier 2025)
+                const [month, year] = label.split(' ');
+                const monthIndex = [
+                    'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+                ].indexOf(month.toLowerCase());
+                
+                if (monthIndex !== -1) {
+                    // Premier jour du mois
+                    const monthStartDate = new Date(parseInt(year), monthIndex, 1);
+                    // Dernier jour du mois
+                    const monthEndDate = new Date(parseInt(year), monthIndex + 1, 0);
+                    
+                    // Un mois est dans la plage s'il chevauche la plage de dates sélectionnée
+                    isInRange = (monthStartDate <= endDate && monthEndDate >= startDate);
+                }
+            }
 
-        if (isInRange) {
-            filteredStats[currentPeriod].labels.push(label);
-            filteredStats[currentPeriod].data.push(stats[currentPeriod].data[index]);
-            filteredStats[currentPeriod].glpiData.push(stats[currentPeriod].glpiData[index]);
-            filteredStats[currentPeriod].blockingData.push(stats[currentPeriod].blockingData[index]);
-        }
+            if (isInRange) {
+                filteredStats[period].labels.push(label);
+                filteredStats[period].data.push(stats[period].data[index]);
+                filteredStats[period].glpiData.push(stats[period].glpiData[index]);
+                filteredStats[period].blockingData.push(stats[period].blockingData[index]);
+            }
+        });
+
+        // Calculer les totaux pour chaque période
+        filteredStats[period].total = filteredStats[period].data.reduce((a, b) => a + b, 0);
+        filteredStats[period].glpi = filteredStats[period].glpiData.reduce((a, b) => a + b, 0);
+        filteredStats[period].blocking = filteredStats[period].blockingData.reduce((a, b) => a + b, 0);
     });
 
-    filteredStats[currentPeriod].total = filteredStats[currentPeriod].data.reduce((a, b) => a + b, 0);
-    filteredStats[currentPeriod].glpi = filteredStats[currentPeriod].glpiData.reduce((a, b) => a + b, 0);
-    filteredStats[currentPeriod].blocking = filteredStats[currentPeriod].blockingData.reduce((a, b) => a + b, 0);
-
+    console.log('Données filtrées:', filteredStats);
     updateAllCharts();
 }
 
@@ -391,35 +458,106 @@ function initializeStats(data) {
         return;
     }
 
-    // Ajout des données de tickets bloquants aux statistiques existantes
-    stats = {
+    console.log("Initialisation des statistiques avec les données reçues:", data);
+
+    // S'assurer que les données sont complètes
+    if (!data.detailedData) {
+        console.error("Les données détaillées sont manquantes.");
+        return;
+    }
+
+    // Calcul des données de blocage pour chaque période
+    stats = { 
         ...data,
         day: {
             ...data.day,
-            blockingData: data.detailedData
-                .filter(ticket => ticket.isBlocking)
-                .reduce((acc, ticket) => {
-                    const date = new Date(ticket.date).toLocaleDateString('fr-FR');
-                    const index = data.day.labels.indexOf(date);
-                    if (index !== -1) {
-                        acc[index] = (acc[index] || 0) + 1;
-                    }
-                    return acc;
-                }, Array(data.day.labels.length).fill(0))
+            blockingData: calculateBlockingData(data.detailedData, data.day.labels, 'day')
         },
         week: {
             ...data.week,
-            blockingData: Array(data.week.labels.length).fill(0)  // À implémenter selon la logique hebdomadaire
+            blockingData: calculateBlockingData(data.detailedData, data.week.labels, 'week')
         },
         month: {
             ...data.month,
-            blockingData: Array(data.month.labels.length).fill(0)  // À implémenter selon la logique mensuelle
+            blockingData: calculateBlockingData(data.detailedData, data.month.labels, 'month')
         }
     };
 
-    filteredStats = { ...stats };
+    // Initialiser également les statistiques filtrées
+    filteredStats = JSON.parse(JSON.stringify(stats));
+    
+    // Mettre à jour tous les graphiques
     updateAllCharts();
+    
+    // Par défaut, afficher les statistiques quotidiennes
     updatePeriod('day');
+}
+
+// Fonction pour calculer les données de blocage pour une période
+function calculateBlockingData(detailedData, labels, periodType) {
+    // Initialiser un tableau avec des zéros pour chaque label
+    const blockingData = Array(labels.length).fill(0);
+    
+    if (!detailedData || detailedData.length === 0) {
+        return blockingData;
+    }
+    
+    // Filtrer seulement les tickets bloquants
+    const blockingTickets = detailedData.filter(ticket => ticket.isBlocking);
+    
+    if (blockingTickets.length === 0) {
+        return blockingData;
+    }
+    
+    // Pour chaque label de période, compter les tickets bloquants correspondants
+    labels.forEach((label, index) => {
+        if (periodType === 'day') {
+            // Compter les tickets bloquants pour ce jour
+            const dayCount = blockingTickets.filter(ticket => {
+                const ticketDate = new Date(ticket.date);
+                return ticketDate.toLocaleDateString('fr-FR') === label;
+            }).length;
+            
+            blockingData[index] = dayCount;
+        } 
+        else if (periodType === 'week' && label.includes(' - ')) {
+            // Compter les tickets bloquants pour cette semaine
+            const [startStr, endStr] = label.split(' - ');
+            const weekStart = new Date(startStr.split('/').reverse().join('-'));
+            const weekEnd = new Date(endStr.split('/').reverse().join('-'));
+            weekEnd.setHours(23, 59, 59, 999);
+            
+            const weekCount = blockingTickets.filter(ticket => {
+                const ticketDate = new Date(ticket.date);
+                return ticketDate >= weekStart && ticketDate <= weekEnd;
+            }).length;
+            
+            blockingData[index] = weekCount;
+        } 
+        else if (periodType === 'month') {
+            // Compter les tickets bloquants pour ce mois
+            const [month, year] = label.split(' ');
+            const monthIndex = [
+                'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+            ].indexOf(month.toLowerCase());
+            
+            if (monthIndex !== -1) {
+                const monthStart = new Date(parseInt(year), monthIndex, 1);
+                const monthEnd = new Date(parseInt(year), monthIndex + 1, 0);
+                monthEnd.setHours(23, 59, 59, 999);
+                
+                const monthCount = blockingTickets.filter(ticket => {
+                    const ticketDate = new Date(ticket.date);
+                    return ticketDate >= monthStart && ticketDate <= monthEnd;
+                }).length;
+                
+                blockingData[index] = monthCount;
+            }
+        }
+    });
+    
+    return blockingData;
 }
 
 // Chargement des statistiques au démarrage

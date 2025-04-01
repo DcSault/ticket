@@ -6,11 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="/css/index.css" rel="stylesheet">
-    <link href="/css/style.css" rel="stylesheet">
-    
-    <!-- Scripts pour le support des commandes -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
     <div class="container mx-auto px-4 py-8">
@@ -39,17 +34,6 @@
                     </svg>
                     Rapport
                 </a>
-                <button 
-                    id="commandsMenuButton" 
-                    title="Commandes spéciales" 
-                    class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2"
-                    onclick="showCommandsHelp()">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                    </svg>
-                    Cmds
-                </button>
                 <span class="text-gray-600 dark:text-gray-400">
                     Connecté en tant que: <strong class="dark:text-white" id="username"></strong>
                 </span>
@@ -192,7 +176,6 @@
     <script src="/js/uiHelpers.js"></script>
     <script src="/js/themeManager.js"></script>
     <script src="/js/version.js"></script>
-    <script src="/js/commands.js"></script>
     
     <!-- Script spécifique à la page -->
     <script>
@@ -201,7 +184,7 @@
             // Initialiser les styles de formulaire
             initFormStyles();
             
-            // Chargement des informations utilisateur et tickets
+            // Charger les données
             const userData = await fetchCurrentUser();
             if (userData) {
                 document.getElementById('username').textContent = userData.username;
@@ -218,11 +201,6 @@
             // Charger et afficher les tickets actifs
             const tickets = await fetchActiveTickets();
             renderActiveTickets(tickets);
-            
-            // Afficher une notification sur les commandes disponibles
-            setTimeout(() => {
-                showNotification('Appuyez sur Alt+H pour voir les commandes disponibles', 'info', 5000);
-            }, 2000);
         });
     </script>
 </body>
