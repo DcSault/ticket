@@ -288,13 +288,36 @@ function updateStats(data) {
         globalTotal.textContent = `(${totalTickets} tickets au total)`;
     }
     
-    // Calculer la moyenne par jour actif
+    // Calculer la moyenne en fonction de la période sélectionnée
+    let moyenne = 0;
+    console.log(`Calcul de la moyenne pour la période: ${currentPeriod}`);
+    
     if (data.data && data.data.length > 0) {
-        const daysWithData = data.data.filter(x => x > 0).length || 1;
-        document.getElementById('avgTicketsPerDay').textContent = (totalTickets / daysWithData).toFixed(1);
+        if (currentPeriod === 'day') {
+            // Pour la vue quotidienne: moyenne = total de tickets / nombre de jours avec des données
+            const daysWithData = data.labels.length || 1;
+            moyenne = totalTickets / daysWithData;
+            console.log(`Moyenne quotidienne: ${totalTickets} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
+        } 
+        else if (currentPeriod === 'week') {
+            // Pour la vue hebdomadaire: moyenne = total / nombre de semaines
+            const weeksCount = data.labels.length || 1;
+            moyenne = totalTickets / weeksCount;
+            console.log(`Moyenne hebdomadaire: ${totalTickets} tickets / ${weeksCount} semaines = ${moyenne.toFixed(1)}`);
+        } 
+        else if (currentPeriod === 'month') {
+            // Pour la vue mensuelle: moyenne = total / nombre de mois
+            const monthsCount = data.labels.length || 1;
+            moyenne = totalTickets / monthsCount;
+            console.log(`Moyenne mensuelle: ${totalTickets} tickets / ${monthsCount} mois = ${moyenne.toFixed(1)}`);
+        }
     } else {
-        document.getElementById('avgTicketsPerDay').textContent = '0';
+        moyenne = 0;
+        console.log(`Aucune donnée pour calculer la moyenne`);
     }
+    
+    // Mettre à jour l'affichage
+    document.getElementById('avgTicketsPerDay').textContent = moyenne.toFixed(1);
     
     // Ajouter les détails de la période actuelle
     const periodDetails = document.querySelector('.period-details');
@@ -311,6 +334,7 @@ function updateStats(data) {
                 <p>Total des tickets dans la période: <span class="font-medium">${totalTickets}</span></p>
                 <p>Tickets GLPI: <span class="font-medium">${totalGLPI}</span> (${Math.round(totalGLPI/totalTickets*100) || 0}%)</p>
                 <p>Tickets bloquants: <span class="font-medium">${totalBlocking}</span> (${Math.round(totalBlocking/totalTickets*100) || 0}%)</p>
+                <p>Moyenne: <span class="font-medium">${moyenne.toFixed(1)}</span> tickets ${periodLabels[currentPeriod] || ''}</p>
             </div>
         `;
     }
@@ -327,6 +351,7 @@ function updateAllCharts() {
     const data = filteredStats[currentPeriod];
     if (!data) {
         console.error(`Pas de données pour la période ${currentPeriod}`);
+        document.getElementById('avgTicketsPerDay').textContent = '0';
         return;
     }
     
@@ -359,6 +384,9 @@ function updateAllCharts() {
         updateCallersChart(emptyData);
         updateTagsChart(emptyData);
         
+        // Afficher un message indiquant l'absence de données
+        console.log("Aucune donnée à afficher pour la période sélectionnée");
+        
         return;
     }
     
@@ -367,6 +395,9 @@ function updateAllCharts() {
     updateGLPIChart(data);
     updateBlockingChart(data);
     updateTopCharts();
+    
+    // Mise à jour des statistiques et de la moyenne
+    console.log("Mise à jour des statistiques et de la moyenne...");
     updateStats(data);
 }
 
@@ -509,9 +540,29 @@ function updatePeriod(period) {
         }
     });
     
-    // Mettre à jour la période active
+    // Mettre à jour le libellé de la moyenne en fonction de la période
+    const averageLabel = document.getElementById('averageLabel');
+    if (averageLabel) {
+        switch (period) {
+            case 'day':
+                averageLabel.textContent = 'par jour';
+                break;
+            case 'week':
+                averageLabel.textContent = 'par semaine';
+                break;
+            case 'month':
+                averageLabel.textContent = 'par mois';
+                break;
+        }
+        console.log(`Libellé de moyenne mis à jour: ${averageLabel.textContent}`);
+    }
+    
+    // Mettre à jour la période active avant de filtrer les données
     currentPeriod = period;
     console.log(`✅ Période active mise à jour: ${currentPeriod}`);
+    
+    // Effacer temporairement l'affichage de la moyenne pour éviter les valeurs incohérentes pendant le chargement
+    document.getElementById('avgTicketsPerDay').textContent = '...';
     
     // Filtrer les données avec la période actuelle et les dates sélectionnées
     filterDataByDate();
