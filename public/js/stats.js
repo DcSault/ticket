@@ -297,17 +297,18 @@ function updateStats(data) {
         const ticketsInPeriod = data.data.reduce((sum, count) => sum + count, 0);
         
         if (currentPeriod === 'day') {
-            // Pour la vue quotidienne: moyenne = tickets dans les jours affichés / nombre de jours
+            // Pour la vue quotidienne: moyenne = tickets dans les jours affichés / nombre de jours ouvrables
+            // Le nombre de jours est déjà filtré pour exclure les weekends dans data.labels
             const daysWithData = data.labels.length || 1;
             
             // Si le comptage réel par jour est différent du total filtré, utiliser le comptage réel
             if (ticketsInPeriod !== totalTickets && ticketsInPeriod > 0) {
                 moyenne = ticketsInPeriod / daysWithData;
-                console.log(`Moyenne quotidienne (comptage par jour): ${ticketsInPeriod} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
+                console.log(`Moyenne quotidienne (comptage par jours ouvrables): ${ticketsInPeriod} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
             } else {
                 // Sinon utiliser le total filtré
                 moyenne = totalTickets / daysWithData;
-                console.log(`Moyenne quotidienne (total): ${totalTickets} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
+                console.log(`Moyenne quotidienne (total/jours ouvrables): ${totalTickets} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
             }
         } 
         else if (currentPeriod === 'week') {
@@ -350,7 +351,7 @@ function updateStats(data) {
     const periodDetails = document.querySelector('.period-details');
     if (periodDetails) {
         const periodLabels = {
-            day: 'par jour',
+            day: 'par jour ouvrable',
             week: 'par semaine',
             month: 'par mois'
         };
@@ -426,13 +427,26 @@ function updateAllCharts() {
     const endDate = normalizeDate(document.getElementById('endDate').value);
     endDate.setHours(23, 59, 59, 999);
     
-    // Créer un objet pour le graphique principal avec toutes les étiquettes
+    // Créer un objet pour le graphique principal avec les étiquettes (en excluant les weekends pour la vue quotidienne)
     const mainChartData = {
-        labels: stats[currentPeriod].labels,
+        labels: [],
         data: [],
         glpiData: [],
         blockingData: []
     };
+    
+    // Pour la vue quotidienne, exclure les weekends des étiquettes
+    if (currentPeriod === 'day') {
+        stats[currentPeriod].labels.forEach((label, index) => {
+            const dateFromLabel = normalizeDate(label.split('/').reverse().join('-'));
+            if (!isWeekend(dateFromLabel)) {
+                mainChartData.labels.push(label);
+            }
+        });
+    } else {
+        // Pour les vues hebdomadaire et mensuelle, garder toutes les étiquettes
+        mainChartData.labels = stats[currentPeriod].labels;
+    }
     
     // Pour chaque étiquette, calculer les données correspondantes
     mainChartData.labels.forEach((label, index) => {
@@ -475,25 +489,25 @@ function updateAllCharts() {
                 // Si la période est dans la plage, utiliser les données filtrées
                 const filteredLabelIndex = filteredData.labels.indexOf(label);
                 if (filteredLabelIndex !== -1) {
-                    mainChartData.data[index] = filteredData.data[filteredLabelIndex];
-                    mainChartData.glpiData[index] = filteredData.glpiData[filteredLabelIndex];
-                    mainChartData.blockingData[index] = filteredData.blockingData[filteredLabelIndex];
+                    mainChartData.data.push(filteredData.data[filteredLabelIndex]);
+                    mainChartData.glpiData.push(filteredData.glpiData[filteredLabelIndex]);
+                    mainChartData.blockingData.push(filteredData.blockingData[filteredLabelIndex]);
                 } else {
-                    mainChartData.data[index] = 0;
-                    mainChartData.glpiData[index] = 0;
-                    mainChartData.blockingData[index] = 0;
+                    mainChartData.data.push(0);
+                    mainChartData.glpiData.push(0);
+                    mainChartData.blockingData.push(0);
                 }
             } else {
                 // Si la période n'est pas dans la plage, mettre à zéro
-                mainChartData.data[index] = 0;
-                mainChartData.glpiData[index] = 0;
-                mainChartData.blockingData[index] = 0;
+                mainChartData.data.push(0);
+                mainChartData.glpiData.push(0);
+                mainChartData.blockingData.push(0);
             }
         } else {
             // Si pas de dates valides, mettre à zéro
-            mainChartData.data[index] = 0;
-            mainChartData.glpiData[index] = 0;
-            mainChartData.blockingData[index] = 0;
+            mainChartData.data.push(0);
+            mainChartData.glpiData.push(0);
+            mainChartData.blockingData.push(0);
         }
     });
     
@@ -512,6 +526,16 @@ function updateAllCharts() {
     updateStats(filteredData);
 }
 
+/**
+ * Vérifie si une date est un jour de weekend (samedi ou dimanche)
+ * @param {Date} date - La date à vérifier
+ * @returns {boolean} Vrai si c'est un weekend, faux sinon
+ */
+function isWeekend(date) {
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 = dimanche, 6 = samedi
+}
+
 function filterDataByDate() {
     // Récupérer et normaliser les dates de début et de fin
     const startDate = normalizeDate(document.getElementById('startDate').value);
@@ -527,12 +551,13 @@ function filterDataByDate() {
     console.log(`Filtrage des données du ${startDate.toLocaleDateString()} au ${endDate.toLocaleDateString()}`);
 
     // 1. Filtrer les données détaillées pour obtenir uniquement les tickets dans la plage
+    // et exclure les weekends
     const filteredDetailedData = stats.detailedData.filter(ticket => {
         const ticketDate = normalizeDate(ticket.date);
-        return ticketDate >= startDate && ticketDate <= endDate;
+        return ticketDate >= startDate && ticketDate <= endDate && !isWeekend(ticketDate);
     });
     
-    console.log(`Tickets dans la plage: ${filteredDetailedData.length}`);
+    console.log(`Tickets dans la plage (hors weekends): ${filteredDetailedData.length}`);
 
     // Afficher un message d'information sur la plage de dates
     updateDateRangeInfo(startDate, endDate, filteredDetailedData.length);
@@ -556,6 +581,11 @@ function filterDataByDate() {
                 periodStartDate = normalizeDate(label.split('/').reverse().join('-'));
                 periodEndDate = new Date(periodStartDate);
                 periodEndDate.setHours(23, 59, 59, 999);
+                
+                // Sauter les weekends pour la vue quotidienne
+                if (isWeekend(periodStartDate)) {
+                    return; // Continue to next iteration
+                }
             } 
             else if (period === 'week' && label.includes(' - ')) {
                 // Format: JJ/MM/AAAA - JJ/MM/AAAA
@@ -566,7 +596,7 @@ function filterDataByDate() {
             } 
             else if (period === 'month') {
                 // Format: mois AAAA
-            const [month, year] = label.split(' ');
+                const [month, year] = label.split(' ');
                 const monthIndex = [
                     'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
                     'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
@@ -586,6 +616,7 @@ function filterDataByDate() {
                     filteredStats[period].labels.push(label);
                     
                     // Compter manuellement les tickets pour cette période spécifique
+                    // En excluant les weekends pour toutes les périodes
                     const ticketsInPeriod = filteredDetailedData.filter(ticket => {
                         const ticketDate = normalizeDate(ticket.date);
                         return ticketDate >= periodStartDate && ticketDate <= periodEndDate;
@@ -665,16 +696,16 @@ function updatePeriod(period) {
     // Mettre à jour le libellé de la moyenne en fonction de la période
     const averageLabel = document.getElementById('averageLabel');
     if (averageLabel) {
-    switch (period) {
-        case 'day':
-                averageLabel.textContent = 'par jour';
-            break;
-        case 'week':
+        switch (period) {
+            case 'day':
+                averageLabel.textContent = 'par jour ouvrable';
+                break;
+            case 'week':
                 averageLabel.textContent = 'par semaine';
-            break;
-        case 'month':
+                break;
+            case 'month':
                 averageLabel.textContent = 'par mois';
-            break;
+                break;
         }
         console.log(`Libellé de moyenne mis à jour: ${averageLabel.textContent}`);
     }
@@ -844,7 +875,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mainChartTitle) {
         const infoElement = document.createElement('p');
         infoElement.className = 'text-sm text-blue-600 dark:text-blue-400 mb-4';
-        infoElement.textContent = 'Ce graphique affiche toutes les périodes avec les données correspondant au filtre de dates sélectionné.';
+        infoElement.textContent = 'Ce graphique affiche toutes les périodes avec les données correspondant au filtre de dates sélectionné, en excluant les weekends.';
         mainChartTitle.insertAdjacentElement('afterend', infoElement);
     }
     
@@ -1052,10 +1083,21 @@ function updateDateRangeMessage(element, startDate, endDate, ticketCount) {
     const oneDay = 24 * 60 * 60 * 1000; // millisecondes dans une journée
     const durationDays = Math.round(Math.abs((endDate - startDate) / oneDay)) + 1;
     
+    // Calculer le nombre de jours ouvrables (en excluant les weekends)
+    let workingDays = 0;
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+        if (!isWeekend(currentDate)) {
+            workingDays++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
     // Créer le message
     element.innerHTML = `
-        <span class="font-semibold">Plage affichée:</span> ${startStr} à ${endStr} (${durationDays} jours)
+        <span class="font-semibold">Plage affichée:</span> ${startStr} à ${endStr} (${durationDays} jours dont ${workingDays} jours ouvrables)
         <span class="font-semibold ml-4">Tickets:</span> ${ticketCount} ${ticketCount === 1 ? 'ticket' : 'tickets'}
+        <span class="text-blue-600 ml-2">(Les weekends sont exclus des statistiques)</span>
         ${ticketCount === 0 ? '<span class="text-red-500 ml-2">(Aucun ticket dans cette plage)</span>' : ''}
     `;
 }
