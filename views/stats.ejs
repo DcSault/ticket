@@ -90,14 +90,14 @@
         <!-- Period Selector -->
         <div class="mb-8 flex gap-4">
             <button onclick="updatePeriod('day')" 
-                    class="px-4 py-2 rounded transition-colors duration-200 bg-blue-500 text-white dark:bg-blue-600 dark:hover:bg-blue-700" 
-                    id="btnDay">Par jour</button>
+                    class="period-btn px-4 py-2 rounded transition-colors duration-200 bg-blue-500 text-white dark:bg-blue-600 dark:hover:bg-blue-700" 
+                    id="btnDay" data-period="day">Par jour</button>
             <button onclick="updatePeriod('week')" 
-                    class="px-4 py-2 rounded transition-colors duration-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600" 
-                    id="btnWeek">Par semaine</button>
+                    class="period-btn px-4 py-2 rounded transition-colors duration-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600" 
+                    id="btnWeek" data-period="week">Par semaine</button>
             <button onclick="updatePeriod('month')" 
-                    class="px-4 py-2 rounded transition-colors duration-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600" 
-                    id="btnMonth">Par mois</button>
+                    class="period-btn px-4 py-2 rounded transition-colors duration-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600" 
+                    id="btnMonth" data-period="month">Par mois</button>
         </div>
 
         <!-- Charts -->

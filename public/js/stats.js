@@ -320,6 +320,9 @@ function updateStats(data) {
 }
 
 function updateAllCharts() {
+    // Afficher la période actuelle pour débogage
+    console.log(`Mise à jour des graphiques pour la période: ${currentPeriod}`);
+    
     // Vérifier que nous avons bien des données pour la période actuelle
     const data = filteredStats[currentPeriod];
     if (!data) {
@@ -327,7 +330,6 @@ function updateAllCharts() {
         return;
     }
     
-    console.log(`Mise à jour des graphiques pour la période ${currentPeriod}`);
     console.log(`Données utilisées pour les graphiques:`, data);
     
     // Si la période n'a pas de données, n'afficher aucun ticket
@@ -475,11 +477,13 @@ function filterDataByDate() {
 }
 
 function updatePeriod(period) {
-    console.log(`Mise à jour de la période: ${period}`);
+    console.log(`⭐ Mise à jour de la période vers: ${period}`);
     
-    // Mettre à jour le bouton actif
+    // Mettre à jour le bouton actif pour les éléments avec la classe .period-btn
     document.querySelectorAll('.period-btn').forEach(btn => {
-        if (btn.getAttribute('data-period') === period) {
+        const btnPeriod = btn.getAttribute('data-period');
+        console.log(`Bouton période trouvé:`, btnPeriod);
+        if (btnPeriod === period) {
             btn.classList.add('active-period', 'bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-300', 'border-blue-600', 'dark:border-blue-500');
             btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
         } else {
@@ -488,8 +492,26 @@ function updatePeriod(period) {
         }
     });
     
+    // Mettre également à jour les boutons avec les IDs btnDay, btnWeek, btnMonth
+    ['day', 'week', 'month'].forEach(p => {
+        const btn = document.getElementById(`btn${p.charAt(0).toUpperCase() + p.slice(1)}`);
+        if (btn) {
+            console.log(`Bouton ID trouvé: btn${p.charAt(0).toUpperCase() + p.slice(1)}`, btn);
+            if (p === period) {
+                btn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
+                btn.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
+            } else {
+                btn.classList.remove('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
+                btn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600', 'text-gray-900', 'dark:text-white');
+            }
+        } else {
+            console.warn(`Bouton avec ID btn${p.charAt(0).toUpperCase() + p.slice(1)} non trouvé`);
+        }
+    });
+    
     // Mettre à jour la période active
-    activePeriod = period;
+    currentPeriod = period;
+    console.log(`✅ Période active mise à jour: ${currentPeriod}`);
     
     // Filtrer les données avec la période actuelle et les dates sélectionnées
     filterDataByDate();
@@ -525,6 +547,12 @@ function initializeStats(data) {
             blockingData: calculateBlockingData(data.detailedData, data.month.labels, 'month')
         }
     };
+    
+    // Log des données de statistiques pour débogage
+    console.log("Statistiques chargées:");
+    console.log("- Données quotidiennes:", stats.day);
+    console.log("- Données hebdomadaires:", stats.week);
+    console.log("- Données mensuelles:", stats.month);
 
     // Initialiser également les statistiques filtrées
     filteredStats = JSON.parse(JSON.stringify(stats));
@@ -541,32 +569,12 @@ function initializeStats(data) {
         endDateInput.valueAsDate = lastDate;
     }
     
-    // Mettre à jour tous les graphiques
-    updateAllCharts();
-    
-    // Par défaut, afficher les statistiques quotidiennes mais ne pas réinitialiser la plage de dates
+    // Par défaut, afficher les statistiques quotidiennes
     currentPeriod = 'day';
-    updateUIForPeriod(currentPeriod);
+    console.log(`Période initiale définie: ${currentPeriod}`);
     
-    // Filtrer les données avec la plage de dates complète
-    filterDataByDate();
-}
-
-// Fonction pour mettre à jour l'UI lorsqu'on change de période sans changer la plage de dates
-function updateUIForPeriod(period) {
-    ['day', 'week', 'month'].forEach(p => {
-        const btn = document.getElementById(`btn${p.charAt(0).toUpperCase() + p.slice(1)}`);
-        if (btn) {
-            btn.classList.remove('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
-            btn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
-        }
-    });
-
-    const selectedBtn = document.getElementById(`btn${period.charAt(0).toUpperCase() + period.slice(1)}`);
-    if (selectedBtn) {
-        selectedBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'dark:bg-gray-700', 'dark:hover:bg-gray-600');
-        selectedBtn.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600', 'dark:hover:bg-blue-700');
-    }
+    // Mettre à jour l'état visuel des boutons de période
+    updatePeriod(currentPeriod);
 }
 
 // Fonction pour calculer les données de blocage pour une période
@@ -656,15 +664,39 @@ function normalizeDate(date) {
 
 // Chargement des statistiques au démarrage
 document.addEventListener('DOMContentLoaded', function() {
-    // Ajouter un écouteur d'événements pour le changement de période
+    console.log("DOM chargé, initialisation des écouteurs d'événements");
+    
+    // Ajouter un écouteur d'événements pour les boutons de période (avec la classe period-btn)
     document.querySelectorAll('.period-btn').forEach(btn => {
+        console.log("Bouton période trouvé:", btn);
         btn.addEventListener('click', function(e) {
-            const period = e.target.dataset.period;
+            const period = this.dataset.period;
+            console.log(`Clic sur bouton période: ${period}`);
             if (period) {
                 updatePeriod(period);
             }
         });
     });
+    
+    // Ajouter également des écouteurs d'événements pour les boutons avec IDs spécifiques
+    const dayBtn = document.getElementById('btnDay');
+    const weekBtn = document.getElementById('btnWeek');
+    const monthBtn = document.getElementById('btnMonth');
+    
+    if (dayBtn) {
+        console.log("Bouton jour trouvé, ajout écouteur");
+        dayBtn.addEventListener('click', () => updatePeriod('day'));
+    }
+    
+    if (weekBtn) {
+        console.log("Bouton semaine trouvé, ajout écouteur");
+        weekBtn.addEventListener('click', () => updatePeriod('week'));
+    }
+    
+    if (monthBtn) {
+        console.log("Bouton mois trouvé, ajout écouteur");
+        monthBtn.addEventListener('click', () => updatePeriod('month'));
+    }
 
     // Ajouter un bouton de réinitialisation
     const dateControlsElem = document.querySelector('.date-controls');
@@ -685,6 +717,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (window.initialStats) {
         initializeStats(window.initialStats);
+    } else {
+        console.error("Aucune statistique initiale trouvée");
     }
 
     // Gestion du thème sombre pour les graphiques
@@ -696,6 +730,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Ajouter les boutons de période
     const periodBtns = document.querySelectorAll('.period-btn');
+    console.log(`Nombre de boutons de période trouvés: ${periodBtns.length}`);
     
     // Mise à jour des styles des boutons de période
     periodBtns.forEach(btn => {
@@ -707,12 +742,9 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.classList.add('active-period', 'bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-300', 'border-blue-600', 'dark:border-blue-500');
             btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
         }
-        
-        btn.addEventListener('click', function() {
-            const period = this.getAttribute('data-period');
-            updatePeriod(period);
-        });
     });
+    
+    console.log("Initialisation DOM terminée");
 });
 
 /**
