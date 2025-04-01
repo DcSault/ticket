@@ -270,16 +270,22 @@ function closeModal() {
  * @returns {string} - La date formatée
  */
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    // Conversion explicite en fuseau horaire Europe/Paris
-    const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-    return parisDate.toLocaleString('fr-FR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    // Si la bibliothèque moment est disponible, l'utiliser
+    if (typeof moment !== 'undefined') {
+        return moment(dateString).tz('Europe/Paris').format('D MMMM YYYY, HH:mm');
+    } else {
+        // Fallback si moment n'est pas disponible
+        const date = new Date(dateString);
+        // Conversion explicite en fuseau horaire Europe/Paris
+        const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+        return parisDate.toLocaleString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
 }
 
 // Ajouter un écouteur pour fermer la modal avec la touche Escape

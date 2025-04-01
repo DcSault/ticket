@@ -371,14 +371,20 @@ function renderSavedFields(savedFields, containerId = 'savedFieldsSection') {
  * @returns {string} - La date formatée
  */
 function formatDate(dateValue) {
-    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-    // Conversion explicite en fuseau horaire Europe/Paris
-    const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-    return parisDate.toLocaleString('fr-FR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    // Si la bibliothèque moment est disponible, l'utiliser
+    if (typeof moment !== 'undefined') {
+        return moment(dateValue).tz('Europe/Paris').format('D MMMM YYYY, HH:mm');
+    } else {
+        // Fallback si moment n'est pas disponible
+        const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+        // Conversion explicite en fuseau horaire Europe/Paris
+        const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+        return parisDate.toLocaleString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
 } 

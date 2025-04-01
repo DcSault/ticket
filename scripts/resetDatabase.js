@@ -1,8 +1,22 @@
 require('dotenv').config();
 const { Sequelize } = require('sequelize');
+const moment = require('moment-timezone');
+
+// Fonction pour détecter dynamiquement le décalage horaire actuel pour Europe/Paris
+function getCurrentTimezoneOffset() {
+    // Obtenir le décalage horaire actuel pour Europe/Paris en minutes
+    const offsetInMinutes = moment().tz('Europe/Paris').utcOffset();
+    // Convertir en format +HH:00
+    const hours = Math.abs(Math.floor(offsetInMinutes / 60));
+    const sign = offsetInMinutes >= 0 ? '+' : '-';
+    return `${sign}${String(hours).padStart(2, '0')}:00`;
+}
 
 async function resetDatabase() {
     console.log('🚀 Début de la réinitialisation complète...');
+
+    const currentOffset = getCurrentTimezoneOffset();
+    console.log(`Décalage horaire actuel pour Europe/Paris: ${currentOffset}`);
 
     const mainSequelize = new Sequelize({
         dialect: 'postgres',
@@ -16,7 +30,7 @@ async function resetDatabase() {
             useUTC: false,
             dateStrings: true,
             typeCast: true,
-            timezone: '+01:00'
+            timezone: currentOffset // Utilisation du décalage horaire détecté dynamiquement
         }
     });
 
