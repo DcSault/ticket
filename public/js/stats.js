@@ -566,7 +566,7 @@ function filterDataByDate() {
             } 
             else if (period === 'month') {
                 // Format: mois AAAA
-                const [month, year] = label.split(' ');
+            const [month, year] = label.split(' ');
                 const monthIndex = [
                     'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
                     'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
