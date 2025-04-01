@@ -382,11 +382,7 @@ function updateAllCharts() {
         return;
     }
     
-    // Récupérer aussi les données complètes (non filtrées) pour le graphique d'évolution
-    const fullData = stats[currentPeriod];
-    
     console.log(`Données filtrées utilisées pour les statistiques:`, filteredData);
-    console.log(`Données complètes utilisées pour le graphique d'évolution:`, fullData);
     
     // Si la période n'a pas de données, n'afficher aucun ticket
     if (filteredData.labels.length === 0) {
@@ -421,8 +417,90 @@ function updateAllCharts() {
         return;
     }
     
-    // Mettre à jour le graphique principal avec les données complètes (non filtrées)
-    updateMainChart(fullData);
+    // Créer un dataset combiné pour le graphique principal:
+    // - Utiliser toutes les étiquettes (labels) de la période (stats[currentPeriod])
+    // - Mais afficher uniquement les données filtrées pour ces étiquettes
+    
+    // Obtenir les dates de début et fin sélectionnées pour le filtrage
+    const startDate = normalizeDate(document.getElementById('startDate').value);
+    const endDate = normalizeDate(document.getElementById('endDate').value);
+    endDate.setHours(23, 59, 59, 999);
+    
+    // Créer un objet pour le graphique principal avec toutes les étiquettes
+    const mainChartData = {
+        labels: stats[currentPeriod].labels,
+        data: [],
+        glpiData: [],
+        blockingData: []
+    };
+    
+    // Pour chaque étiquette, calculer les données correspondantes
+    mainChartData.labels.forEach((label, index) => {
+        let periodStartDate, periodEndDate;
+        
+        // Convertir les labels en dates selon leur format
+        if (currentPeriod === 'day') {
+            // Format: JJ/MM/AAAA
+            periodStartDate = normalizeDate(label.split('/').reverse().join('-'));
+            periodEndDate = new Date(periodStartDate);
+            periodEndDate.setHours(23, 59, 59, 999);
+        } 
+        else if (currentPeriod === 'week' && label.includes(' - ')) {
+            // Format: JJ/MM/AAAA - JJ/MM/AAAA
+            const [startStr, endStr] = label.split(' - ');
+            periodStartDate = normalizeDate(startStr.split('/').reverse().join('-'));
+            periodEndDate = normalizeDate(endStr.split('/').reverse().join('-'));
+            periodEndDate.setHours(23, 59, 59, 999);
+        } 
+        else if (currentPeriod === 'month') {
+            // Format: mois AAAA
+            const [month, year] = label.split(' ');
+            const monthIndex = [
+                'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+            ].indexOf(month.toLowerCase());
+            
+            if (monthIndex !== -1) {
+                periodStartDate = new Date(Date.UTC(parseInt(year), monthIndex, 1));
+                periodEndDate = new Date(Date.UTC(parseInt(year), monthIndex + 1, 0, 23, 59, 59, 999));
+            }
+        }
+        
+        // Comptage des tickets pour cette période dans la plage filtrée
+        if (periodStartDate && periodEndDate) {
+            // Vérifier si cette période chevauche la plage de dates sélectionnée
+            const isInRange = (periodStartDate <= endDate && periodEndDate >= startDate);
+            
+            if (isInRange) {
+                // Si la période est dans la plage, utiliser les données filtrées
+                const filteredLabelIndex = filteredData.labels.indexOf(label);
+                if (filteredLabelIndex !== -1) {
+                    mainChartData.data[index] = filteredData.data[filteredLabelIndex];
+                    mainChartData.glpiData[index] = filteredData.glpiData[filteredLabelIndex];
+                    mainChartData.blockingData[index] = filteredData.blockingData[filteredLabelIndex];
+                } else {
+                    mainChartData.data[index] = 0;
+                    mainChartData.glpiData[index] = 0;
+                    mainChartData.blockingData[index] = 0;
+                }
+            } else {
+                // Si la période n'est pas dans la plage, mettre à zéro
+                mainChartData.data[index] = 0;
+                mainChartData.glpiData[index] = 0;
+                mainChartData.blockingData[index] = 0;
+            }
+        } else {
+            // Si pas de dates valides, mettre à zéro
+            mainChartData.data[index] = 0;
+            mainChartData.glpiData[index] = 0;
+            mainChartData.blockingData[index] = 0;
+        }
+    });
+    
+    console.log('Données complètes pour le graphique principal:', mainChartData);
+    
+    // Mettre à jour le graphique principal avec toutes les étiquettes mais les données filtrées
+    updateMainChart(mainChartData);
     
     // Mettre à jour les autres graphiques avec les données filtrées
     updateGLPIChart(filteredData);
@@ -488,7 +566,7 @@ function filterDataByDate() {
             } 
             else if (period === 'month') {
                 // Format: mois AAAA
-            const [month, year] = label.split(' ');
+                const [month, year] = label.split(' ');
                 const monthIndex = [
                     'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
                     'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
@@ -504,7 +582,7 @@ function filterDataByDate() {
             if (periodStartDate && periodEndDate) {
                 const isInRange = (periodStartDate <= endDate && periodEndDate >= startDate);
 
-        if (isInRange) {
+                if (isInRange) {
                     filteredStats[period].labels.push(label);
                     
                     // Compter manuellement les tickets pour cette période spécifique
@@ -766,7 +844,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mainChartTitle) {
         const infoElement = document.createElement('p');
         infoElement.className = 'text-sm text-blue-600 dark:text-blue-400 mb-4';
-        infoElement.textContent = 'Ce graphique affiche toutes les données disponibles, indépendamment du filtre de dates.';
+        infoElement.textContent = 'Ce graphique affiche toutes les périodes avec les données correspondant au filtre de dates sélectionné.';
         mainChartTitle.insertAdjacentElement('afterend', infoElement);
     }
     
