@@ -372,7 +372,9 @@ function renderSavedFields(savedFields, containerId = 'savedFieldsSection') {
  */
 function formatDate(dateValue) {
     const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-    return date.toLocaleString('fr-FR', {
+    // Conversion explicite en fuseau horaire Europe/Paris
+    const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    return parisDate.toLocaleString('fr-FR', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',

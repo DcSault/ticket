@@ -270,7 +270,10 @@ function closeModal() {
  * @returns {string} - La date formatée
  */
 function formatDate(dateString) {
-    return new Date(dateString).toLocaleString('fr-FR', {
+    const date = new Date(dateString);
+    // Conversion explicite en fuseau horaire Europe/Paris
+    const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    return parisDate.toLocaleString('fr-FR', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
