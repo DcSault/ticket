@@ -270,12 +270,53 @@ function updateTopCharts() {
 }
 
 function updateStats(data) {
-    document.getElementById('totalTickets').textContent = data.data.reduce((a, b) => a + b, 0);
-    document.getElementById('totalGLPI').textContent = data.glpiData.reduce((a, b) => a + b, 0);
-    document.getElementById('totalBlocking').textContent = data.blockingData.reduce((a, b) => a + b, 0);
-    const total = data.data.reduce((a, b) => a + b, 0);
-    const days = data.data.filter(x => x > 0).length || 1;
-    document.getElementById('avgTicketsPerDay').textContent = (total / days).toFixed(1);
+    // Calculer les totaux à partir de l'ensemble des données filtrées
+    const totalTickets = filteredStats.detailedData.length;
+    
+    // Compter manuellement les tickets GLPI et bloquants à partir des données détaillées filtrées
+    const totalGLPI = filteredStats.detailedData.filter(ticket => ticket.isGLPI).length;
+    const totalBlocking = filteredStats.detailedData.filter(ticket => ticket.isBlocking).length;
+    
+    // Mettre à jour les compteurs affichés
+    document.getElementById('totalTickets').textContent = totalTickets;
+    document.getElementById('totalGLPI').textContent = totalGLPI;
+    document.getElementById('totalBlocking').textContent = totalBlocking;
+    
+    // Mettre à jour le compteur global dans le titre
+    const globalTotal = document.getElementById('globalTotal');
+    if (globalTotal) {
+        globalTotal.textContent = `(${totalTickets} tickets au total)`;
+    }
+    
+    // Calculer la moyenne par jour actif
+    if (data.data && data.data.length > 0) {
+        const daysWithData = data.data.filter(x => x > 0).length || 1;
+        document.getElementById('avgTicketsPerDay').textContent = (totalTickets / daysWithData).toFixed(1);
+    } else {
+        document.getElementById('avgTicketsPerDay').textContent = '0';
+    }
+    
+    // Ajouter les détails de la période actuelle
+    const periodDetails = document.querySelector('.period-details');
+    if (periodDetails) {
+        const periodLabels = {
+            day: 'par jour',
+            week: 'par semaine',
+            month: 'par mois'
+        };
+        
+        periodDetails.innerHTML = `
+            <div class="text-sm text-gray-600 mt-2">
+                <p>Période sélectionnée: <span class="font-medium">${periodLabels[currentPeriod] || ''}</span></p>
+                <p>Total des tickets dans la période: <span class="font-medium">${totalTickets}</span></p>
+                <p>Tickets GLPI: <span class="font-medium">${totalGLPI}</span> (${Math.round(totalGLPI/totalTickets*100) || 0}%)</p>
+                <p>Tickets bloquants: <span class="font-medium">${totalBlocking}</span> (${Math.round(totalBlocking/totalTickets*100) || 0}%)</p>
+            </div>
+        `;
+    }
+    
+    // Afficher des logs pour le débogage
+    console.log(`Statistiques mises à jour: ${totalTickets} tickets au total (${totalGLPI} GLPI, ${totalBlocking} bloquants)`);
 }
 
 function updateAllCharts() {
@@ -328,8 +369,10 @@ function updateAllCharts() {
 }
 
 function filterDataByDate() {
-    const startDate = new Date(document.getElementById('startDate').value);
-    const endDate = new Date(document.getElementById('endDate').value);
+    // Récupérer et normaliser les dates de début et de fin
+    const startDate = normalizeDate(document.getElementById('startDate').value);
+    const endDate = normalizeDate(document.getElementById('endDate').value);
+    // Mettre la fin à 23:59:59 pour inclure toute la journée
     endDate.setHours(23, 59, 59, 999);
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -339,45 +382,43 @@ function filterDataByDate() {
 
     console.log(`Filtrage des données du ${startDate.toLocaleDateString()} au ${endDate.toLocaleDateString()}`);
 
-    // Filtrer d'abord les données détaillées
+    // 1. Filtrer les données détaillées pour obtenir uniquement les tickets dans la plage
+    const filteredDetailedData = stats.detailedData.filter(ticket => {
+        const ticketDate = normalizeDate(ticket.date);
+        return ticketDate >= startDate && ticketDate <= endDate;
+    });
+    
+    console.log(`Tickets dans la plage: ${filteredDetailedData.length}`);
+
+    // 2. Créer un nouvel objet de statistiques filtrées
     filteredStats = {
-        ...stats,
-        detailedData: stats.detailedData.filter(ticket => {
-            const ticketDate = new Date(ticket.date);
-            return ticketDate >= startDate && ticketDate <= endDate;
-        })
+        detailedData: filteredDetailedData,
+        day: { labels: [], data: [], glpiData: [], blockingData: [], total: 0 },
+        week: { labels: [], data: [], glpiData: [], blockingData: [], total: 0 },
+        month: { labels: [], data: [], glpiData: [], blockingData: [], total: 0 }
     };
 
-    // Traiter chaque période (jour, semaine, mois)
+    // 3. Recalculer toutes les statistiques par période
     ['day', 'week', 'month'].forEach(period => {
-        filteredStats[period] = {
-            labels: [],
-            data: [],
-            glpiData: [],
-            blockingData: []
-        };
-
         stats[period].labels.forEach((label, index) => {
-            let date;
-            let isInRange = false;
+            let periodStartDate, periodEndDate;
 
-            // Convertir l'étiquette en date en fonction du format de la période
+            // Convertir les labels en dates selon leur format
             if (period === 'day') {
                 // Format: JJ/MM/AAAA
-                date = new Date(label.split('/').reverse().join('-'));
-                isInRange = date >= startDate && date <= endDate;
+                periodStartDate = normalizeDate(label.split('/').reverse().join('-'));
+                periodEndDate = new Date(periodStartDate);
+                periodEndDate.setHours(23, 59, 59, 999);
             } 
             else if (period === 'week' && label.includes(' - ')) {
                 // Format: JJ/MM/AAAA - JJ/MM/AAAA
                 const [startStr, endStr] = label.split(' - ');
-                const weekStartDate = new Date(startStr.split('/').reverse().join('-'));
-                const weekEndDate = new Date(endStr.split('/').reverse().join('-'));
-                
-                // Une semaine est dans la plage si elle chevauche la plage de dates sélectionnée
-                isInRange = (weekStartDate <= endDate && weekEndDate >= startDate);
+                periodStartDate = normalizeDate(startStr.split('/').reverse().join('-'));
+                periodEndDate = normalizeDate(endStr.split('/').reverse().join('-'));
+                periodEndDate.setHours(23, 59, 59, 999);
             } 
             else if (period === 'month') {
-                // Format: mois AAAA (ex: janvier 2025)
+                // Format: mois AAAA
                 const [month, year] = label.split(' ');
                 const monthIndex = [
                     'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
@@ -385,31 +426,48 @@ function filterDataByDate() {
                 ].indexOf(month.toLowerCase());
                 
                 if (monthIndex !== -1) {
-                    // Premier jour du mois
-                    const monthStartDate = new Date(parseInt(year), monthIndex, 1);
-                    // Dernier jour du mois
-                    const monthEndDate = new Date(parseInt(year), monthIndex + 1, 0);
-                    
-                    // Un mois est dans la plage s'il chevauche la plage de dates sélectionnée
-                    isInRange = (monthStartDate <= endDate && monthEndDate >= startDate);
+                    periodStartDate = new Date(Date.UTC(parseInt(year), monthIndex, 1));
+                    periodEndDate = new Date(Date.UTC(parseInt(year), monthIndex + 1, 0, 23, 59, 59, 999));
                 }
             }
 
-            if (isInRange) {
-                filteredStats[period].labels.push(label);
-                filteredStats[period].data.push(stats[period].data[index]);
-                filteredStats[period].glpiData.push(stats[period].glpiData[index]);
-                filteredStats[period].blockingData.push(stats[period].blockingData[index]);
+            // Vérifier si cette période chevauche la plage de dates sélectionnée
+            if (periodStartDate && periodEndDate) {
+                const isInRange = (periodStartDate <= endDate && periodEndDate >= startDate);
+                
+                if (isInRange) {
+                    filteredStats[period].labels.push(label);
+                    
+                    // Compter manuellement les tickets pour cette période spécifique
+                    const ticketsInPeriod = filteredDetailedData.filter(ticket => {
+                        const ticketDate = normalizeDate(ticket.date);
+                        return ticketDate >= periodStartDate && ticketDate <= periodEndDate;
+                    });
+                    
+                    // Ajouter les comptages pour cette période
+                    filteredStats[period].data.push(ticketsInPeriod.length);
+                    filteredStats[period].glpiData.push(ticketsInPeriod.filter(t => t.isGLPI).length);
+                    filteredStats[period].blockingData.push(ticketsInPeriod.filter(t => t.isBlocking).length);
+                }
             }
         });
-
-        // Calculer les totaux pour chaque période
-        filteredStats[period].total = filteredStats[period].data.reduce((a, b) => a + b, 0);
-        filteredStats[period].glpi = filteredStats[period].glpiData.reduce((a, b) => a + b, 0);
-        filteredStats[period].blocking = filteredStats[period].blockingData.reduce((a, b) => a + b, 0);
     });
 
-    console.log('Données filtrées:', filteredStats);
+    // 4. Calculer les totaux pour chaque période (jour, semaine, mois)
+    ['day', 'week', 'month'].forEach(period => {
+        // Le total réel est le nombre de tickets dans la plage
+        filteredStats[period].total = filteredDetailedData.length;
+        
+        // Les totaux GLPI et blocage sont aussi calculés à partir des données détaillées
+        filteredStats[period].glpi = filteredDetailedData.filter(t => t.isGLPI).length;
+        filteredStats[period].blocking = filteredDetailedData.filter(t => t.isBlocking).length;
+    });
+
+    // 5. Journal de débogage
+    console.log('Statistiques filtrées:', filteredStats);
+    console.log(`Total réel: ${filteredDetailedData.length} tickets`);
+    
+    // Mettre à jour les graphiques
     updateAllCharts();
 }
 
@@ -560,8 +618,42 @@ function calculateBlockingData(detailedData, labels, periodType) {
     return blockingData;
 }
 
+/**
+ * Normalise une date en UTC pour éviter les problèmes de fuseau horaire
+ * @param {Date|string} date - La date à normaliser
+ * @returns {Date} La date normalisée
+ */
+function normalizeDate(date) {
+    if (!(date instanceof Date)) {
+        date = new Date(date);
+    }
+    
+    // Créer une nouvelle date en UTC avec seulement la date (pas l'heure)
+    return new Date(Date.UTC(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+    ));
+}
+
 // Chargement des statistiques au démarrage
 document.addEventListener('DOMContentLoaded', function() {
+    // Ajouter un écouteur d'événements pour le changement de période
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const period = e.target.dataset.period;
+            if (period) {
+                updatePeriod(period);
+            }
+        });
+    });
+
+    // Afficher le titre de la section des statistiques pour inclure le total global
+    const statsHeader = document.querySelector('.stats-header h2');
+    if (statsHeader) {
+        statsHeader.innerHTML = 'Statistiques <span id="globalTotal" class="text-blue-600 font-bold"></span>';
+    }
+
     if (window.initialStats) {
         initializeStats(window.initialStats);
     }
