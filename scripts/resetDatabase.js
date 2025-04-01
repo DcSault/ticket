@@ -25,12 +25,12 @@ async function resetDatabase() {
         password: process.env.DB_PASS,
         port: process.env.DB_PORT,
         logging: false,
-        timezone: 'Europe/Paris',
+        // Définit le fuseau horaire UTC pour éviter les doubles conversions
+        timezone: '+00:00',
         dialectOptions: {
-            useUTC: false,
+            useUTC: true,
             dateStrings: true,
-            typeCast: true,
-            timezone: currentOffset // Utilisation du décalage horaire détecté dynamiquement
+            typeCast: true
         }
     });
 
@@ -41,9 +41,9 @@ async function resetDatabase() {
         await mainSequelize.query(`CREATE DATABASE ${process.env.DB_NAME};`);
         console.log('✅ Nouvelle base de données créée');
 
-        // Configurer le fuseau horaire immédiatement après la création
-        await mainSequelize.query(`ALTER DATABASE ${process.env.DB_NAME} SET timezone TO 'Europe/Paris';`);
-        console.log('✅ Fuseau horaire configuré sur Europe/Paris');
+        // Configurer le fuseau horaire de la base de données sur UTC
+        await mainSequelize.query(`ALTER DATABASE ${process.env.DB_NAME} SET timezone TO 'UTC';`);
+        console.log('✅ Fuseau horaire configuré sur UTC');
 
         // Importer les modèles et créer les tables
         const { sequelize, User, Ticket, Message, SavedField } = require('../models');

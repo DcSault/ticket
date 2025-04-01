@@ -272,13 +272,12 @@ function closeModal() {
 function formatDate(dateString) {
     // Si la bibliothèque moment est disponible, l'utiliser
     if (typeof moment !== 'undefined') {
-        return moment(dateString).tz('Europe/Paris').format('D MMMM YYYY, HH:mm');
+        // Créer une date à partir de la valeur passée, sans appliquer de conversion de fuseau horaire
+        return moment(dateString).format('D MMMM YYYY, HH:mm');
     } else {
         // Fallback si moment n'est pas disponible
         const date = new Date(dateString);
-        // Conversion explicite en fuseau horaire Europe/Paris
-        const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-        return parisDate.toLocaleString('fr-FR', {
+        return date.toLocaleString('fr-FR', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

@@ -10,13 +10,12 @@
 function formatDate(dateValue) {
     // Si la bibliothèque moment est disponible, l'utiliser
     if (typeof moment !== 'undefined') {
-        return moment(dateValue).tz('Europe/Paris').format('D MMMM YYYY, HH:mm');
+        // Créer une date à partir de la valeur passée, sans appliquer de conversion de fuseau horaire
+        return moment(dateValue).format('D MMMM YYYY, HH:mm');
     } else {
         // Fallback si moment n'est pas disponible
         const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-        // Conversion explicite en fuseau horaire Europe/Paris
-        const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-        return parisDate.toLocaleString('fr-FR', {
+        return date.toLocaleString('fr-FR', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

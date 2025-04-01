@@ -23,61 +23,30 @@ const sequelize = new Sequelize({
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
     logging: false,
-    timezone: 'Europe/Paris',
+    timezone: '+00:00',
     dialectOptions: {
-        useUTC: false,
+        useUTC: true,
         dateStrings: true,
-        typeCast: true,
-        timezone: currentOffset // Utilisation du décalage horaire détecté dynamiquement
+        typeCast: true
     },
     define: {
         timestamps: true,
         hooks: {
             beforeCreate: (record) => {
-                if (record.dataValues.createdAt) {
-                    record.dataValues.createdAt = new Date(
-                        new Date(record.dataValues.createdAt).toLocaleString('en-US', {
-                            timeZone: 'Europe/Paris'
-                        })
-                    );
-                }
-                if (record.dataValues.updatedAt) {
-                    record.dataValues.updatedAt = new Date(
-                        new Date(record.dataValues.updatedAt).toLocaleString('en-US', {
-                            timeZone: 'Europe/Paris'
-                        })
-                    );
-                }
+                // Supprimer les hooks de conversion de fuseau horaire
+                // qui peuvent créer des décalages supplémentaires
             }
         }
     }
 });
 
-// Fonctions utilitaires pour les dates
+// Fonctions utilitaires pour les dates - sans conversion de fuseau horaire
 const dateHooks = {
     beforeCreate: (record) => {
-        const fields = ['createdAt', 'updatedAt', 'lastLogin', 'lastModifiedAt', 'archivedAt'];
-        fields.forEach(field => {
-            if (record.dataValues[field]) {
-                record.dataValues[field] = new Date(
-                    new Date(record.dataValues[field]).toLocaleString('en-US', {
-                        timeZone: 'Europe/Paris'
-                    })
-                );
-            }
-        });
+        // Supprimer la conversion qui crée un double décalage
     },
     beforeUpdate: (record) => {
-        const fields = ['updatedAt', 'lastModifiedAt', 'archivedAt'];
-        fields.forEach(field => {
-            if (record.dataValues[field]) {
-                record.dataValues[field] = new Date(
-                    new Date(record.dataValues[field]).toLocaleString('en-US', {
-                        timeZone: 'Europe/Paris'
-                    })
-                );
-            }
-        });
+        // Supprimer la conversion qui crée un double décalage
     }
 };
 
