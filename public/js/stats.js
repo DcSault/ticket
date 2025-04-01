@@ -293,23 +293,50 @@ function updateStats(data) {
     console.log(`Calcul de la moyenne pour la période: ${currentPeriod}`);
     
     if (data.data && data.data.length > 0) {
+        // Précalculer les tickets réellement présents dans la période
+        const ticketsInPeriod = data.data.reduce((sum, count) => sum + count, 0);
+        
         if (currentPeriod === 'day') {
-            // Pour la vue quotidienne: moyenne = total de tickets / nombre de jours avec des données
+            // Pour la vue quotidienne: moyenne = tickets dans les jours affichés / nombre de jours
             const daysWithData = data.labels.length || 1;
-            moyenne = totalTickets / daysWithData;
-            console.log(`Moyenne quotidienne: ${totalTickets} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
+            
+            // Si le comptage réel par jour est différent du total filtré, utiliser le comptage réel
+            if (ticketsInPeriod !== totalTickets && ticketsInPeriod > 0) {
+                moyenne = ticketsInPeriod / daysWithData;
+                console.log(`Moyenne quotidienne (comptage par jour): ${ticketsInPeriod} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
+            } else {
+                // Sinon utiliser le total filtré
+                moyenne = totalTickets / daysWithData;
+                console.log(`Moyenne quotidienne (total): ${totalTickets} tickets / ${daysWithData} jours = ${moyenne.toFixed(1)}`);
+            }
         } 
         else if (currentPeriod === 'week') {
-            // Pour la vue hebdomadaire: moyenne = total / nombre de semaines
+            // Pour la vue hebdomadaire: moyenne = tickets dans les semaines / nombre de semaines
             const weeksCount = data.labels.length || 1;
-            moyenne = totalTickets / weeksCount;
-            console.log(`Moyenne hebdomadaire: ${totalTickets} tickets / ${weeksCount} semaines = ${moyenne.toFixed(1)}`);
+            
+            // Si le comptage réel par semaine est différent du total filtré, utiliser le comptage réel
+            if (ticketsInPeriod !== totalTickets && ticketsInPeriod > 0) {
+                moyenne = ticketsInPeriod / weeksCount;
+                console.log(`Moyenne hebdomadaire (comptage par semaine): ${ticketsInPeriod} tickets / ${weeksCount} semaines = ${moyenne.toFixed(1)}`);
+            } else {
+                // Sinon utiliser le total filtré
+                moyenne = totalTickets / weeksCount;
+                console.log(`Moyenne hebdomadaire (total): ${totalTickets} tickets / ${weeksCount} semaines = ${moyenne.toFixed(1)}`);
+            }
         } 
         else if (currentPeriod === 'month') {
-            // Pour la vue mensuelle: moyenne = total / nombre de mois
+            // Pour la vue mensuelle: moyenne = tickets dans les mois / nombre de mois
             const monthsCount = data.labels.length || 1;
-            moyenne = totalTickets / monthsCount;
-            console.log(`Moyenne mensuelle: ${totalTickets} tickets / ${monthsCount} mois = ${moyenne.toFixed(1)}`);
+            
+            // Si le comptage réel par mois est différent du total filtré, utiliser le comptage réel
+            if (ticketsInPeriod !== totalTickets && ticketsInPeriod > 0) {
+                moyenne = ticketsInPeriod / monthsCount;
+                console.log(`Moyenne mensuelle (comptage par mois): ${ticketsInPeriod} tickets / ${monthsCount} mois = ${moyenne.toFixed(1)}`);
+            } else {
+                // Sinon utiliser le total filtré
+                moyenne = totalTickets / monthsCount;
+                console.log(`Moyenne mensuelle (total): ${totalTickets} tickets / ${monthsCount} mois = ${moyenne.toFixed(1)}`);
+            }
         }
     } else {
         moyenne = 0;
@@ -429,9 +456,9 @@ function filterDataByDate() {
     // 2. Créer un nouvel objet de statistiques filtrées
     filteredStats = {
         detailedData: filteredDetailedData,
-        day: { labels: [], data: [], glpiData: [], blockingData: [], total: 0 },
-        week: { labels: [], data: [], glpiData: [], blockingData: [], total: 0 },
-        month: { labels: [], data: [], glpiData: [], blockingData: [], total: 0 }
+        day: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, totalInLabels: 0 },
+        week: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, totalInLabels: 0 },
+        month: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, totalInLabels: 0 }
     };
 
     // 3. Recalculer toutes les statistiques par période
@@ -484,6 +511,9 @@ function filterDataByDate() {
                     filteredStats[period].data.push(ticketsInPeriod.length);
                     filteredStats[period].glpiData.push(ticketsInPeriod.filter(t => t.isGLPI).length);
                     filteredStats[period].blockingData.push(ticketsInPeriod.filter(t => t.isBlocking).length);
+                    
+                    // Incrémenter le compteur de tickets totaux dans les périodes affichées
+                    filteredStats[period].totalInLabels += ticketsInPeriod.length;
                 }
             }
         });
@@ -497,6 +527,14 @@ function filterDataByDate() {
         // Les totaux GLPI et blocage sont aussi calculés à partir des données détaillées
         filteredStats[period].glpi = filteredDetailedData.filter(t => t.isGLPI).length;
         filteredStats[period].blocking = filteredDetailedData.filter(t => t.isBlocking).length;
+        
+        // Vérifier si le total des étiquettes correspond au total réel et logger la différence
+        if (filteredStats[period].totalInLabels !== filteredDetailedData.length) {
+            console.log(`Différence dans les totaux ${period}: 
+                Total réel: ${filteredDetailedData.length} tickets,
+                Total dans les labels: ${filteredStats[period].totalInLabels} tickets,
+                Différence: ${filteredDetailedData.length - filteredStats[period].totalInLabels} tickets`);
+        }
     });
 
     // 5. Journal de débogage
@@ -887,26 +925,30 @@ function getMinMaxDates() {
  * @param {number} ticketCount - Nombre de tickets dans la plage
  */
 function updateDateRangeInfo(startDate, endDate, ticketCount) {
-    const dateRangeInfo = document.querySelector('.date-range-info');
-    if (!dateRangeInfo) {
-        // Créer un élément pour afficher l'information
-        const dateControlsContainer = document.querySelector('.date-controls')?.parentNode;
-        if (dateControlsContainer) {
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'date-range-info mt-2 p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-sm';
-            dateControlsContainer.appendChild(infoDiv);
-            
-            // Mettre à jour le message
-            updateDateRangeMessage(infoDiv, startDate, endDate, ticketCount);
-        }
-    } else {
-        // Mettre à jour le message existant
-        updateDateRangeMessage(dateRangeInfo, startDate, endDate, ticketCount);
+    // Utiliser le conteneur dédié dans le HTML
+    const container = document.getElementById('date-range-container');
+    
+    if (!container) {
+        console.error("Conteneur pour l'affichage de la plage de dates non trouvé");
+        return;
     }
+    
+    // Vérifier si l'élément d'information existe déjà
+    let dateRangeInfo = container.querySelector('.date-range-info');
+    
+    // Si l'élément n'existe pas, le créer
+    if (!dateRangeInfo) {
+        dateRangeInfo = document.createElement('div');
+        dateRangeInfo.className = 'date-range-info p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-sm';
+        container.appendChild(dateRangeInfo);
+    }
+    
+    // Mettre à jour le contenu avec des informations détaillées
+    updateDateRangeMessage(dateRangeInfo, startDate, endDate, ticketCount);
 }
 
 /**
- * Met à jour le message d'information sur la plage de dates
+ * Met à jour le message d'information sur la plage de dates avec des données détaillées
  * @param {HTMLElement} element - Élément HTML où afficher le message
  * @param {Date} startDate - Date de début
  * @param {Date} endDate - Date de fin
@@ -921,10 +963,59 @@ function updateDateRangeMessage(element, startDate, endDate, ticketCount) {
     const oneDay = 24 * 60 * 60 * 1000; // millisecondes dans une journée
     const durationDays = Math.round(Math.abs((endDate - startDate) / oneDay)) + 1;
     
-    // Créer le message
+    // Calculer les semaines et mois approximatifs pour une meilleure lisibilité
+    const weeks = Math.round(durationDays / 7 * 10) / 10; // Arrondi à 1 décimale
+    const months = Math.round(durationDays / 30.44 * 10) / 10; // Moyenne de jours par mois arrondie à 1 décimale
+    
+    // Calculer la moyenne par période
+    const avgPerDay = ticketCount / durationDays;
+    const avgPerWeek = ticketCount / weeks;
+    const avgPerMonth = ticketCount / months;
+    
+    // Calculer les tickets GLPI et bloquants dans cette plage
+    const ticketsGLPI = filteredStats?.detailedData?.filter(t => t.isGLPI)?.length || 0;
+    const ticketsBlocking = filteredStats?.detailedData?.filter(t => t.isBlocking)?.length || 0;
+    
+    // Pourcentages
+    const pctGLPI = ticketCount > 0 ? Math.round((ticketsGLPI / ticketCount) * 100) : 0;
+    const pctBlocking = ticketCount > 0 ? Math.round((ticketsBlocking / ticketCount) * 100) : 0;
+    
+    // Créer une barre de progression stylisée pour les pourcentages
+    const createProgressBar = (percentage, color) => {
+        return `<div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-2 mt-1">
+                    <div class="bg-${color}-500 h-2 rounded-full" style="width: ${percentage}%"></div>
+                </div>`;
+    };
+    
+    // Générer le HTML pour les statistiques
     element.innerHTML = `
-        <span class="font-semibold">Plage affichée:</span> ${startStr} à ${endStr} (${durationDays} jours)
-        <span class="font-semibold ml-4">Tickets:</span> ${ticketCount} ${ticketCount === 1 ? 'ticket' : 'tickets'}
-        ${ticketCount === 0 ? '<span class="text-red-500 ml-2">(Aucun ticket dans cette plage)</span>' : ''}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Plage sélectionnée</h3>
+                <p><span class="font-medium">Du:</span> ${startStr} <span class="font-medium">au:</span> ${endStr}</p>
+                <p><span class="font-medium">Durée:</span> ${durationDays} jours (≈ ${weeks} semaines / ≈ ${months} mois)</p>
+                
+                <h3 class="font-semibold text-gray-900 dark:text-white mt-3 mb-2">Tickets dans cette plage</h3>
+                <p class="text-lg font-bold ${ticketCount === 0 ? 'text-red-500' : 'text-blue-600'}">${ticketCount} ticket${ticketCount !== 1 ? 's' : ''}</p>
+                ${ticketCount === 0 ? '<p class="text-red-500 text-xs">Aucun ticket dans cette plage</p>' : ''}
+            </div>
+            
+            <div>
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Répartition</h3>
+                <div class="mb-2">
+                    <p><span class="font-medium text-purple-600">GLPI:</span> ${ticketsGLPI} (${pctGLPI}%)</p>
+                    ${createProgressBar(pctGLPI, 'purple')}
+                </div>
+                <div class="mb-2">
+                    <p><span class="font-medium text-red-600">Bloquants:</span> ${ticketsBlocking} (${pctBlocking}%)</p>
+                    ${createProgressBar(pctBlocking, 'red')}
+                </div>
+                
+                <h3 class="font-semibold text-gray-900 dark:text-white mt-3 mb-2">Moyennes calculées</h3>
+                <p><span class="font-medium text-green-600">Par jour:</span> ${avgPerDay.toFixed(1)}</p>
+                <p><span class="font-medium text-green-600">Par semaine:</span> ${avgPerWeek.toFixed(1)}</p>
+                <p><span class="font-medium text-green-600">Par mois:</span> ${avgPerMonth.toFixed(1)}</p>
+            </div>
+        </div>
     `;
 }
