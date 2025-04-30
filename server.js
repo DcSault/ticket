@@ -204,6 +204,17 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             lastModifiedAt: new Date()
         };
 
+        // Mise à jour de la date de création si spécifiée
+        if (req.body.creationDate && req.body.creationTime) {
+            const dateStr = `${req.body.creationDate}T${req.body.creationTime}:00`;
+            const newCreatedAt = new Date(dateStr);
+            
+            // Vérifier que la date est valide
+            if (!isNaN(newCreatedAt.getTime())) {
+                updatedData.createdAt = newCreatedAt;
+            }
+        }
+
         if (!updatedData.isGLPI) {
             await Promise.all([
                 SavedField.findOrCreate({ where: { type: 'caller', value: req.body.caller }}),

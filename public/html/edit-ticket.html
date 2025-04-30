@@ -80,6 +80,21 @@
                     </datalist>
                 </div>
 
+                <!-- Champ pour modifier la date et l'heure de création -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Date et heure de création</label>
+                    <div class="flex gap-2">
+                        <input type="date" 
+                               name="creationDate" 
+                               id="creationDate"
+                               class="w-1/2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <input type="time" 
+                               name="creationTime" 
+                               id="creationTime"
+                               class="w-1/2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2">
                     <a href="/"
                        class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600">
@@ -158,6 +173,11 @@
                 document.getElementById('reason').value = ticket.reason || '';
                 document.getElementById('tags').value = Array.isArray(ticket.tags) ? ticket.tags.join(', ') : ticket.tags || '';
                 
+                // Remplir les champs de date et heure de création
+                const creationDate = new Date(ticket.createdAt);
+                document.getElementById('creationDate').value = creationDate.toISOString().split('T')[0];
+                document.getElementById('creationTime').value = creationDate.toTimeString().slice(0, 5);
+                
                 // Afficher/masquer les champs GLPI
                 toggleGLPIFields(document.getElementById('isGLPI'));
             }
@@ -180,7 +200,9 @@
                     isBlocking: document.getElementById('isBlocking').checked ? 'true' : 'false',
                     caller: document.getElementById('caller').value,
                     reason: document.getElementById('reason').value,
-                    tags: document.getElementById('tags').value
+                    tags: document.getElementById('tags').value,
+                    creationDate: document.getElementById('creationDate').value,
+                    creationTime: document.getElementById('creationTime').value
                 };
                 
                 // Mettre à jour le ticket

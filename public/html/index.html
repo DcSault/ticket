@@ -127,6 +127,11 @@
                         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
                     Créer l'appel
                 </button>
+                <button type="button" 
+                        id="quickAddBtn"
+                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded ml-2">
+                    Ajout rapide
+                </button>
             </form>
         </div>
         
@@ -201,7 +206,46 @@
             // Charger et afficher les tickets actifs
             const tickets = await fetchActiveTickets();
             renderActiveTickets(tickets);
+            
+            // Configurer le bouton d'ajout rapide
+            const quickAddBtn = document.getElementById('quickAddBtn');
+            if (quickAddBtn) {
+                quickAddBtn.addEventListener('click', handleQuickAdd);
+            }
         });
+        
+        // Fonction d'ajout rapide
+        function handleQuickAdd() {
+            // Créer les données du formulaire pour une soumission AJAX
+            const formData = new URLSearchParams();
+            
+            // Ajouter les valeurs par défaut
+            formData.append('caller', 'Utilisateur');
+            formData.append('reason', 'Ajout rapide');
+            formData.append('tags', 'ajout_rapide');
+            formData.append('isGLPI', 'false');
+            formData.append('isBlocking', 'false');
+            
+            // Envoyer la requête au serveur
+            fetch('/api/tickets', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else if (response.ok) {
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de l\'ajout rapide:', error);
+                alert('Erreur lors de l\'ajout rapide: ' + error.message);
+            });
+        }
     </script>
 </body>
 </html> 
