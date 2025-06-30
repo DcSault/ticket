@@ -38,11 +38,7 @@ app.use(session({
     saveUninitialized: true
 }));
 
-app.engine('ejs', require('ejs').renderFile);
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-
-// Ajouter cette ligne pour servir les fichiers HTML
+// Configuration pour servir les fichiers HTML
 app.use('/html', express.static(path.join(__dirname, 'public/html')));
 
 // Multer Configuration
@@ -98,8 +94,7 @@ async function archiveOldTickets() {
 // Appel de la fonction toutes les 24 heures
 setInterval(archiveOldTickets, 24 * 60 * 60 * 1000);
 
-// Vérifier si on utilise HTML ou EJS
-const useHTML = process.env.USE_HTML === 'true';
+// Configuration pour utiliser uniquement les fichiers HTML
 
 // Routes d'authentification
 app.get('/login', (req, res) => {
