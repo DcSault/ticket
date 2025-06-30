@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Créer un ticket personnalisé</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/common.css" rel="stylesheet">
     <style>
         .autocomplete-list {
             display: none;
@@ -32,7 +33,7 @@
         <main class="mt-8">
             <section class="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
                 <h2 class="text-xl font-semibold mb-4">Créer un ticket personnalisé</h2>
-                <form action="/admin/create-ticket" method="POST" class="space-y-4">
+                <form id="createTicketForm" class="space-y-4">
                     <div class="form-group">
                         <label for="caller" class="block text-sm font-medium mb-1">Appelant:</label>
                         <input type="text" id="caller" name="caller" required class="w-full p-2 border rounded">
@@ -76,5 +77,14 @@
             </section>
         </main>
     </div>
+
+    <!-- Scripts communs -->
+    <script src="/js/common.js"></script>
+    <script src="/js/apiClient.js"></script>
+    <script src="/js/themeManager.js"></script>
+    <script src="/js/version.js"></script>
+    
+    <!-- Script spécifique à la page -->
+    <script src="/js/pages/create-ticket.js"></script>
 </body>
-</html>
+</html> 
