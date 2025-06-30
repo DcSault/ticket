@@ -63,8 +63,15 @@ function updateCharts(data) {
     // Trouver l'heure de pointe
     const maxTickets = Math.max(...data.hourlyDistribution);
     const peakHour = data.hourlyDistribution.indexOf(maxTickets);
-    document.getElementById('peakHour').textContent = 
-        maxTickets > 0 ? `${String(peakHour).padStart(2, '0')}:00` : '--:00';
+    
+    // Correction du format d'affichage de l'heure de pointe
+    let peakHourDisplay = '--:00';
+    if (maxTickets > 0) {
+        // Formater correctement l'heure avec deux chiffres
+        const hours = String(peakHour).padStart(2, '0');
+        peakHourDisplay = `${hours}:00`;
+    }
+    document.getElementById('peakHour').textContent = peakHourDisplay;
 
     // Mise à jour des graphiques individuels
     try {
