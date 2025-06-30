@@ -866,28 +866,98 @@ function normalizeDate(date) {
     ));
 }
 
-// Fonction pour initialiser la page
-document.addEventListener('DOMContentLoaded', async function() {
-    try {
-        document.getElementById('loading').classList.remove('hidden');
-        
-        // Récupérer les statistiques depuis l'API
-        const response = await fetch('/api/stats');
-        if (!response.ok) {
-            throw new Error('Erreur lors de la récupération des statistiques');
-        }
-        
-        stats = await response.json();
-        
-        // Initialiser les statistiques
-        initializeStats(stats);
-        
-        document.getElementById('loading').classList.add('hidden');
-    } catch (error) {
-        console.error('Erreur:', error);
-        document.getElementById('loading').classList.add('hidden');
-        alert('Erreur lors du chargement des statistiques: ' + error.message);
+// Chargement des statistiques au démarrage
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM chargé, initialisation des écouteurs d'événements");
+    
+    // Ajouter un message d'information pour le graphique principal
+    const mainChartTitle = document.querySelector('.bg-white.col-span-2 h2');
+    if (mainChartTitle) {
+        const infoElement = document.createElement('p');
+        infoElement.className = 'text-sm text-blue-600 dark:text-blue-400 mb-4';
+        infoElement.textContent = 'Ce graphique affiche toutes les périodes avec les données correspondant au filtre de dates sélectionné, en excluant les weekends.';
+        mainChartTitle.insertAdjacentElement('afterend', infoElement);
     }
+    
+    // Ajouter un écouteur d'événements pour les boutons de période (avec la classe period-btn)
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        console.log("Bouton période trouvé:", btn);
+        btn.addEventListener('click', function(e) {
+            const period = this.dataset.period;
+            console.log(`Clic sur bouton période: ${period}`);
+            if (period) {
+                updatePeriod(period);
+            }
+        });
+    });
+    
+    // Ajouter également des écouteurs d'événements pour les boutons avec IDs spécifiques
+    const dayBtn = document.getElementById('btnDay');
+    const weekBtn = document.getElementById('btnWeek');
+    const monthBtn = document.getElementById('btnMonth');
+    
+    if (dayBtn) {
+        console.log("Bouton jour trouvé, ajout écouteur");
+        dayBtn.addEventListener('click', () => updatePeriod('day'));
+    }
+    
+    if (weekBtn) {
+        console.log("Bouton semaine trouvé, ajout écouteur");
+        weekBtn.addEventListener('click', () => updatePeriod('week'));
+    }
+    
+    if (monthBtn) {
+        console.log("Bouton mois trouvé, ajout écouteur");
+        monthBtn.addEventListener('click', () => updatePeriod('month'));
+    }
+
+    // Ajouter un bouton de réinitialisation
+    const dateControlsElem = document.querySelector('.date-controls');
+    if (dateControlsElem) {
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'reset-dates-btn ml-2 inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 font-medium text-xs rounded-md shadow-sm hover:bg-blue-100 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-gray-800 transition-colors';
+        resetBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>Tous les tickets';
+        resetBtn.addEventListener('click', resetToAllData);
+        dateControlsElem.appendChild(resetBtn);
+    }
+
+    // Afficher le titre de la section des statistiques pour inclure le total global
+    const statsHeader = document.querySelector('.stats-header h2');
+    if (statsHeader) {
+        statsHeader.innerHTML = 'Statistiques <span id="globalTotal" class="text-blue-600 font-bold"></span>';
+    }
+
+    if (window.initialStats) {
+        initializeStats(window.initialStats);
+    } else {
+        console.error("Aucune statistique initiale trouvée");
+    }
+
+    // Gestion du thème sombre pour les graphiques
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    if (isDarkMode) {
+        Chart.defaults.color = '#ffffff';
+        Chart.defaults.borderColor = '#374151';
+    }
+
+    // Ajouter les boutons de période
+    const periodBtns = document.querySelectorAll('.period-btn');
+    console.log(`Nombre de boutons de période trouvés: ${periodBtns.length}`);
+    
+    // Mise à jour des styles des boutons de période
+    periodBtns.forEach(btn => {
+        // Ajouter des classes de style Tailwind aux boutons
+        btn.className = 'period-btn px-3 py-1.5 mx-1 border rounded-md text-sm font-medium transition-colors bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600';
+        
+        // Si c'est le bouton jour (par défaut), le marquer comme actif
+        if (btn.getAttribute('data-period') === 'day') {
+            btn.classList.add('active-period', 'bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-300', 'border-blue-600', 'dark:border-blue-500');
+            btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
+        }
+    });
+    
+    console.log("Initialisation DOM terminée");
 });
 
 /**

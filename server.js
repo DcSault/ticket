@@ -404,13 +404,44 @@ app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
 });
 
 // Stats
-app.get('/stats', requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/html/stats.html'));
+app.get('/stats', async (req, res) => {
+    try {
+        const tickets = await Ticket.findAll({
+            order: [['createdAt', 'DESC']]
+        });
+
+        const stats = await processStats(tickets);
+        res.render('stats', { stats });
+    } catch (error) {
+        console.error('Erreur stats:', error);
+        res.status(500).send('Erreur serveur');
+    }
 });
 
 // Route pour afficher la page de rapport
-app.get('/report', requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/html/report.html'));
+app.get('/report', async (req, res) => {
+    try {
+        const defaultDate = new Date();
+        const tickets = await Ticket.findAll({
+            include: [Message],
+            where: {
+                createdAt: {
+                    [Op.gte]: new Date(defaultDate.setHours(0, 0, 0, 0)),
+                    [Op.lte]: new Date(defaultDate.setHours(23, 59, 59, 999))
+                }
+            },
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.render('report', { 
+            tickets, 
+            username: 'Visiteur', // Valeur par défaut pour les visiteurs
+            currentDate: defaultDate
+        });
+    } catch (error) {
+        console.error('Erreur génération rapport:', error);
+        res.status(500).send('Erreur serveur');
+    }
 });
 
 // Route API pour générer les données du rapport
@@ -840,8 +871,21 @@ app.use((err, req, res, next) => {
 });
 
 // Route pour afficher le formulaire de création de ticket personnalisé (accessible à tous)
-app.get('/admin/create-ticket', requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/html/create-ticket.html'));
+app.get('/admin/create-ticket', async (req, res) => {
+    try {
+        const savedFields = await SavedField.findAll();
+        res.render('admin/create-ticket', {
+            savedFields: {
+                callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
+                reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
+                tags: savedFields.filter(f => f.type === 'tag').map(f => f.value)
+            },
+            username: 'Admin' // Vous pouvez définir un nom d'utilisateur par défaut
+        });
+    } catch (error) {
+        console.error('Erreur lors de l\'affichage du formulaire admin:', error);
+        res.status(500).send('Erreur serveur');
+    }
 });
 
 // Route pour traiter la création du ticket personnalisé (accessible à tous)
@@ -863,33 +907,6 @@ app.post('/admin/create-ticket', async (req, res) => {
     } catch (error) {
         console.error('Erreur lors de la création du ticket:', error);
         res.status(500).send('Erreur serveur');
-    }
-});
-
-// API pour les statistiques
-app.get('/api/stats', requireLogin, async (req, res) => {
-    try {
-        const tickets = await Ticket.findAll({
-            order: [['createdAt', 'DESC']]
-        });
-
-        const stats = await processStats(tickets);
-        res.json(stats);
-    } catch (error) {
-        console.error('Erreur stats API:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-// API pour les données de rapport
-app.get('/api/report-data', requireLogin, async (req, res) => {
-    try {
-        const date = req.query.date ? new Date(req.query.date) : new Date();
-        const reportData = await getReportStats(date);
-        res.json(reportData);
-    } catch (error) {
-        console.error('Erreur API rapport:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

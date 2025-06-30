@@ -499,18 +499,13 @@ async function generateReport() {
     }
 }
 
-// Fonction pour récupérer les données du rapport
+// Fonction utilitaire pour récupérer les données du rapport
 async function fetchReportData(date) {
-    try {
-        const response = await fetch(`/api/report-data?date=${date}`);
-        if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Erreur lors de la récupération des données:', error);
-        throw error;
+    const response = await fetch(`/api/report-data?date=${date}`);
+    if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
     }
+    return await response.json();
 }
 
 // Initialisation des écouteurs d'événements

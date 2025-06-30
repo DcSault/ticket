@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'Application de support' %></title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js pour les graphiques -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Moment.js pour la gestion des dates et fuseaux horaires -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
+    
+    <!-- Feuille de style principale -->
+    <link rel="stylesheet" href="/css/style.css">
+    
+    <!-- Scripts communs -->
+    <script src="/js/common.js"></script>
+    <script src="/js/uiHelpers.js"></script>
+    
+    <!-- Autres balises meta et scripts spécifiques à la page -->
+    <% if (typeof meta !== 'undefined') { %><%- meta %><% } %>
+    
+    <!-- Styles spécifiques à la page -->
+    <% if (typeof styles !== 'undefined') { %><%- styles %><% } %>
+</head>
+
+<!-- ... existing code ... --> 
