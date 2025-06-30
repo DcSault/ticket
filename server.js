@@ -404,92 +404,44 @@ app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
 });
 
 // Stats
-app.get('/stats', requireLogin, (req, res) => {
+app.get('/stats', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/stats.html'));
 });
 
 // Route pour afficher la page de rapport
-app.get('/report', requireLogin, (req, res) => {
+app.get('/report', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/report.html'));
 });
 
-// Route API pour générer les données du rapport
-app.get('/api/report-data', async (req, res) => {
+// API pour les statistiques
+app.get('/api/stats', async (req, res) => {
     try {
-        const requestDate = req.query.date ? new Date(req.query.date) : new Date();
-        const startDate = new Date(requestDate);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(requestDate);
-        endDate.setHours(23, 59, 59, 999);
-
         const tickets = await Ticket.findAll({
-            where: {
-                createdAt: {
-                    [Op.between]: [startDate, endDate]
-                }
-            }
+            order: [['createdAt', 'DESC']]
         });
 
-        if (tickets.length === 0) {
-            return res.json({
-                total: 0,
-                glpi: 0,
-                blocking: 0,
-                hourlyDistribution: Array(24).fill(0),
-                morningTickets: 0,
-                afternoonTickets: 0,
-                topCallers: {},
-                topTags: {}
-            });
-        }
-
-        const stats = {
-            total: tickets.length,
-            glpi: tickets.filter(t => t.isGLPI).length,
-            blocking: tickets.filter(t => t.isBlocking).length,
-            hourlyDistribution: Array(24).fill(0),
-            morningTickets: 0,
-            afternoonTickets: 0,
-            topCallers: {},
-            topTags: {}
-        };
-
-        tickets.forEach(ticket => {
-            const ticketDate = new Date(ticket.createdAt);
-            const hour = ticketDate.getHours();
-
-            stats.hourlyDistribution[hour]++;
-
-            if (hour < 12) stats.morningTickets++;
-            else stats.afternoonTickets++;
-
-            stats.topCallers[ticket.caller] = (stats.topCallers[ticket.caller] || 0) + 1;
-
-            if (ticket.tags && Array.isArray(ticket.tags)) {
-                ticket.tags.forEach(tag => {
-                    stats.topTags[tag] = (stats.topTags[tag] || 0) + 1;
-                });
-            }
-        });
-
+        const stats = await processStats(tickets);
         res.json(stats);
     } catch (error) {
-        console.error('Erreur complète:', error);
-        res.status(500).json({
-            error: 'Erreur serveur',
-            message: error.message,
-            stack: error.stack
-        });
+        console.error('Erreur stats API:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-app.get('/api/report', async (req, res) => {
-    const date = new Date(req.query.date);
-    const stats = await getReportStats(date);
-    res.json(stats);
-  });
-  
-  async function getReportStats(date) {
+// API pour les données de rapport
+app.get('/api/report-data', async (req, res) => {
+    try {
+        const date = req.query.date ? new Date(req.query.date) : new Date();
+        const reportData = await getReportStats(date);
+        res.json(reportData);
+    } catch (error) {
+        console.error('Erreur API rapport:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Fonction pour générer les statistiques du rapport
+async function getReportStats(date) {
     // Statistiques quotidiennes
     const dayStart = new Date(date);
     dayStart.setHours(0,0,0,0);
@@ -504,6 +456,22 @@ app.get('/api/report', async (req, res) => {
         }
     });
 
+    // Si aucun ticket, retourner des valeurs par défaut
+    if (tickets.length === 0) {
+        return {
+            total: 0,
+            glpi: 0,
+            blocking: 0,
+            hourlyDistribution: Array(24).fill(0),
+            morningTickets: 0,
+            afternoonTickets: 0,
+            morningRatio: 0,
+            afternoonRatio: 0,
+            topCallers: {},
+            topTags: {}
+        };
+    }
+
     // Calculer les ratios et tranches horaires
     const morningTickets = tickets.filter(t => new Date(t.createdAt).getHours() < 12);
     const afternoonTickets = tickets.filter(t => new Date(t.createdAt).getHours() >= 12);
@@ -514,15 +482,33 @@ app.get('/api/report', async (req, res) => {
         hourlyDistribution[hour]++;
     });
 
+    // Calculer les statistiques des appelants et des tags
+    const topCallers = {};
+    const topTags = {};
+
+    tickets.forEach(ticket => {
+        // Comptabiliser les appelants
+        topCallers[ticket.caller] = (topCallers[ticket.caller] || 0) + 1;
+
+        // Comptabiliser les tags
+        if (ticket.tags && Array.isArray(ticket.tags)) {
+            ticket.tags.forEach(tag => {
+                topTags[tag] = (topTags[tag] || 0) + 1;
+            });
+        }
+    });
+
     return {
         total: tickets.length,
         glpi: tickets.filter(t => t.isGLPI).length,
         blocking: tickets.filter(t => t.isBlocking).length,
-        morningRatio: morningTickets.length / tickets.length,
-        afternoonRatio: afternoonTickets.length / tickets.length,
+        morningTickets: morningTickets.length,
+        afternoonTickets: afternoonTickets.length,
+        morningRatio: tickets.length > 0 ? morningTickets.length / tickets.length : 0,
+        afternoonRatio: tickets.length > 0 ? afternoonTickets.length / tickets.length : 0,
         hourlyDistribution,
-        topCallers: getTopCallers(tickets),
-        topTags: getTopTags(tickets)
+        topCallers,
+        topTags
     };
 }
 
@@ -754,34 +740,6 @@ async function processStats(tickets) {
     return stats;
 }
 
-// Fonction pour obtenir les top callers
-function getTopCallers(tickets) {
-  const callerStats = {};
-  
-  tickets.forEach(ticket => {
-    if (ticket.caller) {
-      callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
-    }
-  });
-  
-  return callerStats;
-}
-
-// Fonction pour obtenir les top tags
-function getTopTags(tickets) {
-  const tagStats = {};
-  
-  tickets.forEach(ticket => {
-    if (ticket.tags && Array.isArray(ticket.tags)) {
-      ticket.tags.forEach(tag => {
-        tagStats[tag] = (tagStats[tag] || 0) + 1;
-      });
-    }
-  });
-  
-  return tagStats;
-}
-
 // Routes API pour les données
 app.get('/api/user', requireLogin, (req, res) => {
     res.json({ username: req.session.username });
@@ -863,33 +821,6 @@ app.post('/admin/create-ticket', async (req, res) => {
     } catch (error) {
         console.error('Erreur lors de la création du ticket:', error);
         res.status(500).send('Erreur serveur');
-    }
-});
-
-// API pour les statistiques
-app.get('/api/stats', requireLogin, async (req, res) => {
-    try {
-        const tickets = await Ticket.findAll({
-            order: [['createdAt', 'DESC']]
-        });
-
-        const stats = await processStats(tickets);
-        res.json(stats);
-    } catch (error) {
-        console.error('Erreur stats API:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-// API pour les données de rapport
-app.get('/api/report-data', requireLogin, async (req, res) => {
-    try {
-        const date = req.query.date ? new Date(req.query.date) : new Date();
-        const reportData = await getReportStats(date);
-        res.json(reportData);
-    } catch (error) {
-        console.error('Erreur API rapport:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
