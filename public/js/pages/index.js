@@ -64,6 +64,111 @@ function deleteSavedField(field, value) {
     }
 }
 
+// Variables globales pour stocker les statistiques d'utilisation
+let usageStats = {
+    reasons: {},
+    tags: {},
+    reasonToTags: {}, // Pour les associations raison -> tags
+    tagToReasons: {}  // Pour les associations tag -> raisons
+};
+
+// Récupérer les archives des tickets pour analyser les usages
+async function fetchArchiveStats() {
+    try {
+        const response = await fetch('/api/archives');
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération des archives');
+        }
+        
+        const archives = await response.json();
+        analyzeArchives(archives);
+        
+        return usageStats;
+    } catch (error) {
+        console.error('Erreur lors de l\'analyse des archives:', error);
+        return usageStats;
+    }
+}
+
+// Analyser les archives pour déterminer les statistiques d'utilisation
+function analyzeArchives(archives) {
+    // Réinitialiser les statistiques
+    usageStats = {
+        reasons: {},
+        tags: {},
+        reasonToTags: {},
+        tagToReasons: {}
+    };
+    
+    // Parcourir toutes les archives
+    archives.forEach(ticket => {
+        // Ne traiter que les tickets non-GLPI qui ont des raisons et des tags
+        if (!ticket.isGLPI && ticket.reason) {
+            // Compter les raisons
+            usageStats.reasons[ticket.reason] = (usageStats.reasons[ticket.reason] || 0) + 1;
+            
+            // Traiter les tags
+            let tags = [];
+            if (Array.isArray(ticket.tags)) {
+                tags = ticket.tags;
+            } else if (typeof ticket.tags === 'string') {
+                tags = ticket.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+            }
+            
+            // Compter les tags
+            tags.forEach(tag => {
+                usageStats.tags[tag] = (usageStats.tags[tag] || 0) + 1;
+                
+                // Associer raison -> tags
+                if (!usageStats.reasonToTags[ticket.reason]) {
+                    usageStats.reasonToTags[ticket.reason] = {};
+                }
+                usageStats.reasonToTags[ticket.reason][tag] = (usageStats.reasonToTags[ticket.reason][tag] || 0) + 1;
+                
+                // Associer tag -> raisons
+                if (!usageStats.tagToReasons[tag]) {
+                    usageStats.tagToReasons[tag] = {};
+                }
+                usageStats.tagToReasons[tag][ticket.reason] = (usageStats.tagToReasons[tag][ticket.reason] || 0) + 1;
+            });
+        }
+    });
+    
+    console.log('Statistiques d\'utilisation calculées:', usageStats);
+}
+
+// Récupérer les choix les plus fréquents
+function getTopChoices(items, count = 4) {
+    // Si aucun élément ou tableau vide, ne rien afficher
+    if (!items || Object.keys(items).length === 0) {
+        return [];
+    }
+    
+    // Convertir en tableau et trier par fréquence décroissante
+    return Object.entries(items)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, count)
+        .map(entry => entry[0]);
+}
+
+// Récupérer les tags associés à une raison
+function getTagsForReason(reason, count = 4) {
+    if (!usageStats.reasonToTags[reason]) {
+        return [];
+    }
+    
+    return getTopChoices(usageStats.reasonToTags[reason], count);
+}
+
+// Récupérer les raisons associées à un tag
+function getReasonsForTag(tag, count = 4) {
+    if (!usageStats.tagToReasons[tag]) {
+        return [];
+    }
+    
+    return getTopChoices(usageStats.tagToReasons[tag], count);
+}
+
 // Gestion des modales pour les choix rapides
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -79,28 +184,8 @@ function closeModal(modalId) {
     }
 }
 
-// Récupérer les choix les plus fréquents
-function getTopChoices(items, count = 4) {
-    // Si aucun élément ou tableau vide, ne rien afficher
-    if (!items || items.length === 0) {
-        return [];
-    }
-    
-    // Compter la fréquence de chaque élément
-    const frequencyMap = {};
-    items.forEach(item => {
-        frequencyMap[item] = (frequencyMap[item] || 0) + 1;
-    });
-    
-    // Convertir en tableau et trier par fréquence décroissante
-    return Object.entries(frequencyMap)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, count)
-        .map(entry => entry[0]);
-}
-
 // Afficher les options rapides dans une modale
-function renderQuickOptions(containerId, options, fieldId) {
+function renderQuickOptions(containerId, options, fieldId, sourceValue = null) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
@@ -141,6 +226,16 @@ function renderQuickOptions(containerId, options, fieldId) {
         'bg-purple-100 hover:bg-purple-200 dark:bg-purple-800 dark:hover:bg-purple-700 text-purple-800 dark:text-purple-200' : 
         'bg-blue-100 hover:bg-blue-200 dark:bg-blue-800 dark:hover:bg-blue-700 text-blue-800 dark:text-blue-200';
     
+    // Ajouter un titre si on affiche des suggestions basées sur une sélection précédente
+    if (sourceValue) {
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'mb-3 text-sm text-gray-600 dark:text-gray-400';
+        titleDiv.textContent = isTagsField 
+            ? `Tags fréquemment utilisés avec "${sourceValue}"` 
+            : `Raisons fréquemment utilisées avec "${sourceValue}"`;
+        container.appendChild(titleDiv);
+    }
+    
     options.forEach(option => {
         const button = document.createElement('button');
         button.type = 'button';
@@ -178,8 +273,29 @@ function renderQuickOptions(containerId, options, fieldId) {
                     input.value = option;
                 }
                 
-                // Fermer la modale
-                closeModal(fieldId === 'reason' ? 'quickReasonModal' : 'quickTagsModal');
+                // Fermer la modale actuelle
+                closeModal(isTagsField ? 'quickTagsModal' : 'quickReasonModal');
+                
+                // Si c'est une raison, ouvrir automatiquement les tags associés
+                if (!isTagsField) {
+                    const associatedTags = getTagsForReason(option);
+                    if (associatedTags.length > 0) {
+                        setTimeout(() => {
+                            renderQuickOptions('quickTagsOptions', associatedTags, 'tags', option);
+                            openModal('quickTagsModal');
+                        }, 300);
+                    }
+                } 
+                // Si c'est un tag, ouvrir automatiquement les raisons associées
+                else if (sourceValue === null) { // Seulement si ce n'est pas déjà une suggestion basée sur une raison
+                    const associatedReasons = getReasonsForTag(option);
+                    if (associatedReasons.length > 0) {
+                        setTimeout(() => {
+                            renderQuickOptions('quickReasonOptions', associatedReasons, 'reason', option);
+                            openModal('quickReasonModal');
+                        }, 300);
+                    }
+                }
             }
         });
         
@@ -188,15 +304,15 @@ function renderQuickOptions(containerId, options, fieldId) {
 }
 
 // Initialiser les boutons de choix rapide
-function initQuickChoiceButtons(savedFields) {
-    // S'assurer que savedFields existe
-    savedFields = savedFields || { reasons: [], tags: [] };
+async function initQuickChoiceButtons() {
+    // Récupérer les statistiques d'utilisation depuis les archives
+    await fetchArchiveStats();
     
     // Bouton pour les raisons
     const quickReasonBtn = document.getElementById('quickReasonBtn');
     if (quickReasonBtn) {
         quickReasonBtn.addEventListener('click', () => {
-            const topReasons = getTopChoices(savedFields.reasons);
+            const topReasons = getTopChoices(usageStats.reasons);
             renderQuickOptions('quickReasonOptions', topReasons, 'reason');
             openModal('quickReasonModal');
         });
@@ -206,7 +322,7 @@ function initQuickChoiceButtons(savedFields) {
     const quickTagsBtn = document.getElementById('quickTagsBtn');
     if (quickTagsBtn) {
         quickTagsBtn.addEventListener('click', () => {
-            const topTags = getTopChoices(savedFields.tags);
+            const topTags = getTopChoices(usageStats.tags);
             renderQuickOptions('quickTagsOptions', topTags, 'tags');
             openModal('quickTagsModal');
         });
@@ -225,10 +341,12 @@ document.addEventListener('DOMContentLoaded', function() {
             setupAutocomplete('tags', savedFields.tags || [], true);
             
             // Initialiser les boutons de choix rapide
-            initQuickChoiceButtons(savedFields);
+            initQuickChoiceButtons();
         })
         .catch(error => {
             console.error('Erreur lors de la récupération des champs mémorisés:', error);
+            // Initialiser quand même les boutons de choix rapide en cas d'erreur
+            initQuickChoiceButtons();
         });
 });
 
