@@ -158,14 +158,21 @@ function initQuickChoiceButtons(savedFields) {
 
 // Autocomplétion pour les champs
 document.addEventListener('DOMContentLoaded', function() {
-    setupAutocomplete('caller', savedFields?.callers || []);
-    setupAutocomplete('reason', savedFields?.reasons || []);
-    setupAutocomplete('tags', savedFields?.tags || [], true);
-    
-    // Initialiser les boutons de choix rapide
-    if (savedFields) {
-        initQuickChoiceButtons(savedFields);
-    }
+    // Récupérer les champs mémorisés
+    fetch('/api/saved-fields')
+        .then(response => response.json())
+        .then(savedFields => {
+            // Configurer l'autocomplétion
+            setupAutocomplete('caller', savedFields.callers || []);
+            setupAutocomplete('reason', savedFields.reasons || []);
+            setupAutocomplete('tags', savedFields.tags || [], true);
+            
+            // Initialiser les boutons de choix rapide
+            initQuickChoiceButtons(savedFields);
+        })
+        .catch(error => {
+            console.error('Erreur lors de la récupération des champs mémorisés:', error);
+        });
 });
 
 // Configuration de l'autocomplétion pour un champ

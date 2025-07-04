@@ -234,9 +234,25 @@
     <script src="/js/uiHelpers.js"></script>
     <script src="/js/themeManager.js"></script>
     <script src="/js/version.js"></script>
+    <script src="/js/pages/index.js"></script>
     
     <!-- Script spécifique à la page -->
     <script>
+        // Fonctions pour les modales
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+        
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+        
         // Initialisation de la page
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialiser les styles de formulaire
@@ -255,9 +271,6 @@
             setupAutocomplete('caller', savedFields.callers || []);
             setupAutocomplete('reason', savedFields.reasons || []);
             setupAutocomplete('tags', savedFields.tags || [], true);
-            
-            // Initialiser les boutons de choix rapide
-            initQuickChoiceButtons(savedFields);
             
             // Charger et afficher les tickets actifs
             const tickets = await fetchActiveTickets();
