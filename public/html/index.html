@@ -89,22 +89,42 @@
                 <!-- Non-GLPI Fields -->
                 <div class="non-glpi-field">
                     <label for="reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Raison</label>
-                    <input type="text" 
-                           id="reason" 
-                           name="reason" 
-                           placeholder="Raison de l'appel"
-                           required
-                           class="w-full p-2 border rounded text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                    <div class="flex">
+                        <input type="text" 
+                               id="reason" 
+                               name="reason" 
+                               placeholder="Raison de l'appel"
+                               required
+                               class="w-full p-2 border rounded-l text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                        <button type="button" 
+                                id="quickReasonBtn"
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-r flex items-center"
+                                title="Choix rapides">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="non-glpi-field">
                     <label for="tags" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags (séparés par des virgules)</label>
-                    <input type="text" 
-                           id="tags" 
-                           name="tags" 
-                           placeholder="Ex: réseau, imprimante, logiciel"
-                           required
-                           class="w-full p-2 border rounded text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                    <div class="flex">
+                        <input type="text" 
+                               id="tags" 
+                               name="tags" 
+                               placeholder="Ex: réseau, imprimante, logiciel"
+                               required
+                               class="w-full p-2 border rounded-l text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                        <button type="button" 
+                                id="quickTagsBtn"
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-r flex items-center"
+                                title="Tags rapides">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Saved Fields Section -->
@@ -141,6 +161,39 @@
             
             <div id="ticketsContainer" class="space-y-4">
                 <!-- Les tickets actifs seront injectés ici par JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modales pour les choix rapides -->
+    <div id="quickReasonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Raisons fréquentes</h3>
+                <button type="button" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="closeModal('quickReasonModal')">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="quickReasonOptions" class="grid grid-cols-2 gap-3">
+                <!-- Les options seront injectées ici par JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <div id="quickTagsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tags fréquents</h3>
+                <button type="button" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="closeModal('quickTagsModal')">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="quickTagsOptions" class="grid grid-cols-2 gap-3">
+                <!-- Les options seront injectées ici par JavaScript -->
             </div>
         </div>
     </div>
@@ -202,6 +255,9 @@
             setupAutocomplete('caller', savedFields.callers || []);
             setupAutocomplete('reason', savedFields.reasons || []);
             setupAutocomplete('tags', savedFields.tags || [], true);
+            
+            // Initialiser les boutons de choix rapide
+            initQuickChoiceButtons(savedFields);
             
             // Charger et afficher les tickets actifs
             const tickets = await fetchActiveTickets();

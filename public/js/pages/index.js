@@ -64,11 +64,108 @@ function deleteSavedField(field, value) {
     }
 }
 
+// Gestion des modales pour les choix rapides
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Récupérer les choix les plus fréquents
+function getTopChoices(items, count = 4) {
+    // Compter la fréquence de chaque élément
+    const frequencyMap = {};
+    items.forEach(item => {
+        frequencyMap[item] = (frequencyMap[item] || 0) + 1;
+    });
+    
+    // Convertir en tableau et trier par fréquence décroissante
+    return Object.entries(frequencyMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, count)
+        .map(entry => entry[0]);
+}
+
+// Afficher les options rapides dans une modale
+function renderQuickOptions(containerId, options, fieldId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    options.forEach(option => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white py-2 px-4 rounded text-left truncate';
+        button.textContent = option;
+        
+        button.addEventListener('click', () => {
+            const input = document.getElementById(fieldId);
+            if (input) {
+                if (fieldId === 'tags' && input.value) {
+                    // Pour les tags, ajouter à la liste existante
+                    const currentTags = input.value.split(',').map(tag => tag.trim());
+                    if (!currentTags.includes(option)) {
+                        if (input.value && !input.value.endsWith(',')) {
+                            input.value += ', ';
+                        }
+                        input.value += option;
+                    }
+                } else {
+                    // Pour les autres champs, remplacer la valeur
+                    input.value = option;
+                }
+                
+                // Fermer la modale
+                closeModal(fieldId === 'reason' ? 'quickReasonModal' : 'quickTagsModal');
+            }
+        });
+        
+        container.appendChild(button);
+    });
+}
+
+// Initialiser les boutons de choix rapide
+function initQuickChoiceButtons(savedFields) {
+    // Bouton pour les raisons
+    const quickReasonBtn = document.getElementById('quickReasonBtn');
+    if (quickReasonBtn && savedFields.reasons && savedFields.reasons.length > 0) {
+        quickReasonBtn.addEventListener('click', () => {
+            const topReasons = getTopChoices(savedFields.reasons);
+            renderQuickOptions('quickReasonOptions', topReasons, 'reason');
+            openModal('quickReasonModal');
+        });
+    }
+    
+    // Bouton pour les tags
+    const quickTagsBtn = document.getElementById('quickTagsBtn');
+    if (quickTagsBtn && savedFields.tags && savedFields.tags.length > 0) {
+        quickTagsBtn.addEventListener('click', () => {
+            const topTags = getTopChoices(savedFields.tags);
+            renderQuickOptions('quickTagsOptions', topTags, 'tags');
+            openModal('quickTagsModal');
+        });
+    }
+}
+
 // Autocomplétion pour les champs
 document.addEventListener('DOMContentLoaded', function() {
     setupAutocomplete('caller', savedFields?.callers || []);
     setupAutocomplete('reason', savedFields?.reasons || []);
     setupAutocomplete('tags', savedFields?.tags || [], true);
+    
+    // Initialiser les boutons de choix rapide
+    if (savedFields) {
+        initQuickChoiceButtons(savedFields);
+    }
 });
 
 // Configuration de l'autocomplétion pour un champ

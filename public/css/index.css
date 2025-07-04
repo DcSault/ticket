@@ -48,6 +48,39 @@
     background-color: #6b7280;
 }
 
+/* Styles pour les modales de choix rapide */
+#quickReasonModal,
+#quickTagsModal {
+    transition: opacity 0.3s ease;
+}
+
+#quickReasonModal:not(.hidden),
+#quickTagsModal:not(.hidden) {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+#quickReasonOptions button,
+#quickTagsOptions button {
+    transition: all 0.2s ease;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+#quickReasonOptions button:active,
+#quickTagsOptions button:active {
+    transform: scale(0.97);
+}
+
 * {
     transition: background-color 0.3s ease,
                 border-color 0.3s ease,
