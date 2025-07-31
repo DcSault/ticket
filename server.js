@@ -440,17 +440,54 @@ app.get('/api/report-data', async (req, res) => {
     }
 });
 
+// Fonction pour calculer automatiquement les dates de changement d'heure en France
+function getFrenchDSTDates(year) {
+    // Règle européenne: dernier dimanche de mars à 2h00 -> dernier dimanche d'octobre à 3h00
+    
+    // Trouver le dernier dimanche de mars
+    const march31 = new Date(Date.UTC(year, 2, 31)); // 31 mars
+    const lastSundayMarch = new Date(march31);
+    const daysToSubtract = march31.getUTCDay(); // 0 = dimanche, 1 = lundi, etc.
+    lastSundayMarch.setUTCDate(31 - daysToSubtract);
+    lastSundayMarch.setUTCHours(2, 0, 0, 0); // 2h00 du matin
+    
+    // Trouver le dernier dimanche d'octobre
+    const october31 = new Date(Date.UTC(year, 9, 31)); // 31 octobre
+    const lastSundayOctober = new Date(october31);
+    const daysToSubtractOct = october31.getUTCDay();
+    lastSundayOctober.setUTCDate(31 - daysToSubtractOct);
+    lastSundayOctober.setUTCHours(3, 0, 0, 0); // 3h00 du matin
+    
+    return {
+        startDST: lastSundayMarch,    // Début heure d'été
+        endDST: lastSundayOctober     // Fin heure d'été
+    };
+}
+
 // Fonction pour obtenir l'heure locale française
 function getFrenchLocalHour(dateString) {
     const date = new Date(dateString);
-    // Utiliser la même logique que formatDate pour obtenir l'heure locale
-    const localDate = new Date(date.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }));
-    const hour = localDate.getHours();
+    const year = date.getUTCFullYear();
+    
+    // Obtenir les dates de changement d'heure pour l'année
+    const dstDates = getFrenchDSTDates(year);
+    
+    // Déterminer si on est en heure d'été (DST)
+    const isDST = date >= dstDates.startDST && date < dstDates.endDST;
+    const offset = isDST ? 2 : 1; // UTC+2 en été, UTC+1 en hiver
+    
+    // Calculer l'heure locale française
+    const utcHour = date.getUTCHours();
+    const frenchHour = (utcHour + offset) % 24;
     
     // Debug: afficher les détails de la conversion
-    console.log(`Conversion heure: ${dateString} -> UTC: ${date.getHours()}h, Locale FR: ${hour}h`);
+    const dstStatus = isDST ? 'ÉTÉ' : 'HIVER';
+    const dstStart = dstDates.startDST.toLocaleDateString('fr-FR');
+    const dstEnd = dstDates.endDST.toLocaleDateString('fr-FR');
     
-    return hour;
+    console.log(`Conversion heure: ${dateString} -> UTC: ${utcHour}h, ${dstStatus} (${dstStart} à ${dstEnd}), Offset: +${offset}h, Locale FR: ${frenchHour}h`);
+    
+    return frenchHour;
 }
 
 // Fonction pour générer les statistiques du rapport
@@ -866,6 +903,13 @@ async function startServer() {
 
         const VERSION = '2.0.6';
         console.log(`🚀 Version du serveur : ${VERSION}`);
+
+        // Afficher les informations de changement d'heure pour l'année courante
+        const currentYear = new Date().getFullYear();
+        const dstDates = getFrenchDSTDates(currentYear);
+        console.log(`🕐 Changement d'heure ${currentYear}:`);
+        console.log(`   - Heure d'été: ${dstDates.startDST.toLocaleDateString('fr-FR')} à 2h00`);
+        console.log(`   - Heure d'hiver: ${dstDates.endDST.toLocaleDateString('fr-FR')} à 3h00`);
 
         app.listen(process.env.PORT, () => {
             console.log(`✨ Serveur démarré sur http://localhost:${process.env.PORT}`);
