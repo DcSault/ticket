@@ -443,8 +443,14 @@ app.get('/api/report-data', async (req, res) => {
 // Fonction pour obtenir l'heure locale française
 function getFrenchLocalHour(dateString) {
     const date = new Date(dateString);
-    // Forcer l'heure locale française (UTC+1/+2)
-    return date.getHours();
+    // Utiliser la même logique que formatDate pour obtenir l'heure locale
+    const localDate = new Date(date.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }));
+    const hour = localDate.getHours();
+    
+    // Debug: afficher les détails de la conversion
+    console.log(`Conversion heure: ${dateString} -> UTC: ${date.getHours()}h, Locale FR: ${hour}h`);
+    
+    return hour;
 }
 
 // Fonction pour générer les statistiques du rapport
