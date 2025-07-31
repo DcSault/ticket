@@ -440,6 +440,13 @@ app.get('/api/report-data', async (req, res) => {
     }
 });
 
+// Fonction pour obtenir l'heure locale française
+function getFrenchLocalHour(dateString) {
+    const date = new Date(dateString);
+    // Forcer l'heure locale française (UTC+1/+2)
+    return date.getHours();
+}
+
 // Fonction pour générer les statistiques du rapport
 async function getReportStats(date) {
     // Statistiques quotidiennes
@@ -473,13 +480,22 @@ async function getReportStats(date) {
     }
 
     // Calculer les ratios et tranches horaires
-    const morningTickets = tickets.filter(t => new Date(t.createdAt).getHours() < 12);
-    const afternoonTickets = tickets.filter(t => new Date(t.createdAt).getHours() >= 12);
+    // Normaliser les dates pour éviter les problèmes de fuseau horaire
+    const morningTickets = tickets.filter(t => {
+        const localHour = getFrenchLocalHour(t.createdAt);
+        console.log(`Ticket ${t.id}: createdAt=${t.createdAt}, heure locale=${localHour}`);
+        return localHour < 12;
+    });
+    const afternoonTickets = tickets.filter(t => {
+        const localHour = getFrenchLocalHour(t.createdAt);
+        return localHour >= 12;
+    });
 
     const hourlyDistribution = Array(24).fill(0);
     tickets.forEach(t => {
-        const hour = new Date(t.createdAt).getHours();
+        const hour = getFrenchLocalHour(t.createdAt);
         hourlyDistribution[hour]++;
+        console.log(`Distribution horaire: ticket ${t.id} à ${hour}h`);
     });
 
     // Calculer les statistiques des appelants et des tags
