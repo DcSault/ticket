@@ -480,14 +480,27 @@ function getFrenchLocalHour(dateString) {
     const utcHour = date.getUTCHours();
     const frenchHour = (utcHour + offset) % 24;
     
-    // Debug: afficher les détails de la conversion
-    const dstStatus = isDST ? 'ÉTÉ' : 'HIVER';
-    const dstStart = dstDates.startDST.toLocaleDateString('fr-FR');
-    const dstEnd = dstDates.endDST.toLocaleDateString('fr-FR');
-    
-    console.log(`Conversion heure: ${dateString} -> UTC: ${utcHour}h, ${dstStatus} (${dstStart} à ${dstEnd}), Offset: +${offset}h, Locale FR: ${frenchHour}h`);
+
     
     return frenchHour;
+}
+
+// Fonction pour normaliser une date en heure locale française
+function normalizeFrenchDate(dateString) {
+    const date = new Date(dateString);
+    const year = date.getUTCFullYear();
+    
+    // Obtenir les dates de changement d'heure pour l'année
+    const dstDates = getFrenchDSTDates(year);
+    
+    // Déterminer si on est en heure d'été (DST)
+    const isDST = date >= dstDates.startDST && date < dstDates.endDST;
+    const offset = isDST ? 2 : 1; // UTC+2 en été, UTC+1 en hiver
+    
+    // Créer une nouvelle date avec l'heure locale française
+    const frenchDate = new Date(date.getTime() + (offset * 60 * 60 * 1000));
+    
+    return frenchDate;
 }
 
 // Fonction pour générer les statistiques du rapport
@@ -526,7 +539,6 @@ async function getReportStats(date) {
     // Normaliser les dates pour éviter les problèmes de fuseau horaire
     const morningTickets = tickets.filter(t => {
         const localHour = getFrenchLocalHour(t.createdAt);
-        console.log(`Ticket ${t.id}: createdAt=${t.createdAt}, heure locale=${localHour}`);
         return localHour < 12;
     });
     const afternoonTickets = tickets.filter(t => {
@@ -538,7 +550,6 @@ async function getReportStats(date) {
     tickets.forEach(t => {
         const hour = getFrenchLocalHour(t.createdAt);
         hourlyDistribution[hour]++;
-        console.log(`Distribution horaire: ticket ${t.id} à ${hour}h`);
     });
 
     // Calculer les statistiques des appelants et des tags
@@ -677,7 +688,7 @@ async function processStats(tickets) {
         });
 
         // Traitement pour les statistiques quotidiennes
-        const ticketDate = new Date(ticket.createdAt);
+        const ticketDate = normalizeFrenchDate(ticket.createdAt);
         const dateStr = ticketDate.toLocaleDateString('fr-FR');
         
         if (dailyCounts.has(dateStr)) {
@@ -699,6 +710,7 @@ async function processStats(tickets) {
             const weekEndDate = new Date(endStr.split('/').reverse().join('-'));
             weekEndDate.setHours(23, 59, 59, 999);
             
+            // Utiliser la date normalisée pour la comparaison
             if (ticketDate >= weekStartDate && ticketDate <= weekEndDate) {
                 weekCounts.set(weekLabel, weekCounts.get(weekLabel) + 1);
                 
@@ -727,6 +739,7 @@ async function processStats(tickets) {
                 const monthEndDate = new Date(parseInt(year), monthIndex + 1, 0);
                 monthEndDate.setHours(23, 59, 59, 999);
                 
+                // Utiliser la date normalisée pour la comparaison
                 if (ticketDate >= monthStartDate && ticketDate <= monthEndDate) {
                     monthCounts.set(monthLabel, monthCounts.get(monthLabel) + 1);
                     
@@ -904,12 +917,7 @@ async function startServer() {
         const VERSION = '2.0.6';
         console.log(`🚀 Version du serveur : ${VERSION}`);
 
-        // Afficher les informations de changement d'heure pour l'année courante
-        const currentYear = new Date().getFullYear();
-        const dstDates = getFrenchDSTDates(currentYear);
-        console.log(`🕐 Changement d'heure ${currentYear}:`);
-        console.log(`   - Heure d'été: ${dstDates.startDST.toLocaleDateString('fr-FR')} à 2h00`);
-        console.log(`   - Heure d'hiver: ${dstDates.endDST.toLocaleDateString('fr-FR')} à 3h00`);
+
 
         app.listen(process.env.PORT, () => {
             console.log(`✨ Serveur démarré sur http://localhost:${process.env.PORT}`);
