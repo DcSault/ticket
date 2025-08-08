@@ -49,13 +49,12 @@ html, body {
 }
 
 /* Couleur de fond par défaut globale (force le clair si pas de classe .dark) */
-html {
-    background-color: #ffffff;
-}
+html { background-color: #ffffff; color-scheme: light; }
 
 /* Fond global en mode sombre */
-html.dark {
+html.dark, html[data-theme="dark"] {
     background-color: #111827; /* équivalent Tailwind gray-900 */
+    color-scheme: dark;
     /* Overrides de palette pour le mode sombre */
     --surface: #1f2937;          /* gray-800 */
     --surface-muted: #374151;    /* gray-700 */
@@ -65,6 +64,8 @@ html.dark {
     --hover-bg: #4b5563;         /* hover sombre générique */
     --surface-selected: #6b7280; /* gray-500 */
 }
+
+html[data-theme="light"] { color-scheme: light; }
 
 /* Animation de fade-in commune */
 @keyframes fadeIn {

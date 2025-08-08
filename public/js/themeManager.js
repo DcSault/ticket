@@ -33,11 +33,28 @@ class ThemeManager {
         if (legacy && !localStorage.getItem('theme')) {
             localStorage.setItem('theme', legacy);
         }
+        // Surcharge via URL (?theme=light|dark) pour debug/forçage
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const forced = params.get('theme');
+            if (forced === 'light' || forced === 'dark') {
+                localStorage.setItem('theme', forced);
+                localStorage.setItem('color-theme', forced);
+                // Nettoyer l'URL sans recharger
+                params.delete('theme');
+                const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
+                window.history.replaceState({}, '', newUrl);
+            }
+        } catch (_) {}
+
         const saved = localStorage.getItem('theme');
         // Par défaut: clair si aucun choix utilisateur
         const isDark = saved ? saved === 'dark' : false;
         // Appliquer sans persister tant que l'utilisateur n'a pas choisi
-        document.documentElement.classList.toggle('dark', isDark);
+        const root = document.documentElement;
+        root.classList.toggle('dark', isDark);
+        root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        try { root.style.colorScheme = isDark ? 'dark' : 'light'; } catch(_) {}
         const darkIcon = document.getElementById('theme-toggle-dark-icon');
         const lightIcon = document.getElementById('theme-toggle-light-icon');
         if (darkIcon && lightIcon) {
@@ -47,7 +64,10 @@ class ThemeManager {
     }
 
     setTheme(isDark) {
-        document.documentElement.classList.toggle('dark', isDark);
+        const root = document.documentElement;
+        root.classList.toggle('dark', isDark);
+        root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        try { root.style.colorScheme = isDark ? 'dark' : 'light'; } catch(_) {}
         const darkIcon = document.getElementById('theme-toggle-dark-icon');
         const lightIcon = document.getElementById('theme-toggle-light-icon');
         if (darkIcon && lightIcon) {
