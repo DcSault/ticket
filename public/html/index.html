@@ -15,7 +15,7 @@
         // Appliquer le thème le plus tôt possible pour éviter le flash
         (function(){
             try {
-                const saved = localStorage.getItem('theme');
+                const saved = localStorage.getItem('theme') || localStorage.getItem('color-theme');
                 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const isDark = saved ? saved === 'dark' : prefersDark;
                 document.documentElement.classList.toggle('dark', isDark);
