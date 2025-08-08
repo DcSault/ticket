@@ -39,6 +39,16 @@ html, body {
     flex-direction: column;
 }
 
+/* Couleur de fond par défaut globale (force le clair si pas de classe .dark) */
+html {
+    background-color: #ffffff;
+}
+
+/* Fond global en mode sombre */
+html.dark {
+    background-color: #111827; /* équivalent Tailwind gray-900 */
+}
+
 /* Animation de fade-in commune */
 @keyframes fadeIn {
     from {
