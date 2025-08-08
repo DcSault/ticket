@@ -28,6 +28,11 @@ class ThemeManager {
     }
 
     applyInitialTheme() {
+        // Supporter ancienne clé 'color-theme' et migrer vers 'theme'
+        const legacy = localStorage.getItem('color-theme');
+        if (legacy && !localStorage.getItem('theme')) {
+            localStorage.setItem('theme', legacy);
+        }
         const saved = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const isDark = saved ? saved === 'dark' : prefersDark;
@@ -42,7 +47,10 @@ class ThemeManager {
             darkIcon.classList.toggle('hidden', !isDark);
             lightIcon.classList.toggle('hidden', isDark);
         }
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        const value = isDark ? 'dark' : 'light';
+        // Ecrire sur les deux clés pour compatibilité
+        localStorage.setItem('theme', value);
+        localStorage.setItem('color-theme', value);
         this.updateChartsTheme(isDark);
     }
 
@@ -98,7 +106,8 @@ class ThemeManager {
         const toggle = document.getElementById('theme-toggle');
         if (toggle) {
             toggle.addEventListener('click', () => {
-                this.setTheme(!document.documentElement.classList.contains('dark'));
+                const next = !document.documentElement.classList.contains('dark');
+                this.setTheme(next);
             });
         }
         // Suivre le thème système si aucun thème n'est forcé
