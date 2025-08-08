@@ -17,8 +17,7 @@
         (function(){
             try {
                 const saved = localStorage.getItem('theme') || localStorage.getItem('color-theme');
-                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const isDark = saved ? saved === 'dark' : prefersDark;
+                const isDark = saved ? saved === 'dark' : false;
                 document.documentElement.classList.toggle('dark', isDark);
             } catch(e) {}
         })();
