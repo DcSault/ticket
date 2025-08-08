@@ -10,7 +10,8 @@ class ThemeManager {
     }
 
     injectToggleButton() {
-        if (document.getElementById('theme-toggle')) return;
+        // Si un toggle global d'app shell existe, ne pas injecter un second
+        if (document.getElementById('theme-toggle') || document.getElementById('app-theme-toggle')) return;
         const button = document.createElement('button');
         button.id = 'theme-toggle';
         button.type = 'button';
@@ -101,6 +102,11 @@ class ThemeManager {
                 this.setTheme(!document.documentElement.classList.contains('dark'));
             });
         }
+        // Écouter les changements émis par l'app shell
+        document.addEventListener('themechange', (e) => {
+            const isDark = e?.detail?.isDark ?? document.documentElement.classList.contains('dark');
+            this.updateChartsTheme(isDark);
+        });
         // Suivre le thème système si aucun thème n'est forcé
         const media = window.matchMedia('(prefers-color-scheme: dark)');
         media.addEventListener('change', (e) => {
