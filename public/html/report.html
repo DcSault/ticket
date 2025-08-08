@@ -4,35 +4,47 @@
     <title>Rapport - Support appels</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script>
+        window.tailwind = window.tailwind || {};
+        window.tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="/css/common.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
-    <!-- Top Navigation -->
-    <div class="w-full bg-gradient-to-r from-blue-600 to-purple-600">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded bg-white/20 flex items-center justify-center text-white font-bold">R</div>
-                    <h1 class="text-xl md:text-2xl font-semibold text-white">Rapport</h1>
-                </div>
-                <nav class="flex items-center gap-4 text-white/90">
-                    <a href="/stats" class="hover:underline underline-offset-4">Statistiques</a>
-                    <a href="/report" class="font-medium underline underline-offset-4">Rapport</a>
-                    <a href="/" class="hover:underline underline-offset-4">Accueil</a>
-                </nav>
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header (aligné sur index.html) -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">CallFix</h1>
+            <div class="flex items-center gap-4">
+                <a href="/archives" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Archives
+                </a>
+                <a href="/stats" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Statistiques
+                </a>
+                <a href="/report" class="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Rapport
+                </a>
             </div>
         </div>
-    </div>
 
-    <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Rapport journalier</h2>
-        </div>
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">Rapport journalier</h2>
 
         <!-- Controls -->
         <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">

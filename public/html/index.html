@@ -4,8 +4,24 @@
     <title>CallFix</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script>
+        // Config Tailwind CDN pour activer dark mode par classe
+        window.tailwind = window.tailwind || {};
+        window.tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="/css/index.css" rel="stylesheet">
+    <script>
+        // Appliquer le thème le plus tôt possible pour éviter le flash
+        (function(){
+            try {
+                const saved = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const isDark = saved ? saved === 'dark' : prefersDark;
+                document.documentElement.classList.toggle('dark', isDark);
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
     <div class="container mx-auto px-4 py-8">
