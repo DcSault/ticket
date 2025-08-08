@@ -34,8 +34,8 @@ class ThemeManager {
             localStorage.setItem('theme', legacy);
         }
         const saved = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const isDark = saved ? saved === 'dark' : prefersDark;
+        // Par défaut: clair si aucun choix utilisateur
+        const isDark = saved ? saved === 'dark' : false;
         // Appliquer sans persister tant que l'utilisateur n'a pas choisi
         document.documentElement.classList.toggle('dark', isDark);
         const darkIcon = document.getElementById('theme-toggle-dark-icon');
