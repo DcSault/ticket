@@ -36,7 +36,14 @@ class ThemeManager {
         const saved = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const isDark = saved ? saved === 'dark' : prefersDark;
-        this.setTheme(isDark);
+        // Appliquer sans persister tant que l'utilisateur n'a pas choisi
+        document.documentElement.classList.toggle('dark', isDark);
+        const darkIcon = document.getElementById('theme-toggle-dark-icon');
+        const lightIcon = document.getElementById('theme-toggle-light-icon');
+        if (darkIcon && lightIcon) {
+            darkIcon.classList.toggle('hidden', !isDark);
+            lightIcon.classList.toggle('hidden', isDark);
+        }
     }
 
     setTheme(isDark) {
