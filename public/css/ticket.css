@@ -33,13 +33,9 @@
     transition: background-color 0.3s;
 }
 
-.message:hover {
-    background-color: #f9fafb;
-}
+.message:hover { background-color: var(--surface-muted); }
 
-.dark .message:hover {
-    background-color: #374151;
-}
+.dark .message:hover { background-color: var(--surface-muted); }
 
 /* Styles pour les images */
 .message-image {
@@ -56,13 +52,9 @@
     transition: background-color 0.2s;
 }
 
-.tag:hover {
-    background-color: #e5e7eb;
-}
+.tag:hover { background-color: var(--surface-selected); }
 
-.dark .tag:hover {
-    background-color: #4b5563;
-}
+.dark .tag:hover { background-color: var(--hover-bg); }
 
 /* Styles pour les formulaires */
 .form-input:focus {
@@ -71,22 +63,12 @@
 }
 
 /* Styles pour le mode sombre */
-.dark .ticket-details {
-    background-color: #1f2937;
-    color: #f3f4f6;
-}
+.dark .ticket-details { background-color: var(--surface); color: var(--text-dark); }
 
 .dark .message {
     border-color: #374151;
 }
 
-.dark .form-input {
-    background-color: #374151;
-    border-color: #4b5563;
-    color: #f3f4f6;
-}
+.dark .form-input { background-color: var(--surface-muted); border-color: var(--border-light); color: var(--text-dark); }
 
-.dark .tag {
-    background-color: #374151;
-    color: #d1d5db;
-} 
+.dark .tag { background-color: var(--surface-muted); color: #d1d5db; }

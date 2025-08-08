@@ -23,6 +23,15 @@
     --bg-dark: #1f2937;
     --text-light: #111827;
     --text-dark: #f9fafb;
+
+    /* Palette UI (variables de surface et bordures) */
+    --surface: #ffffff;             /* cartes, fond clair */
+    --surface-muted: #f9fafb;       /* surfaces légères */
+    --surface-alt: #f3f4f6;         /* fond alt clair */
+    --border-light: #e5e7eb;        /* gris clair bordure */
+    --border-muted: #dddddd;        /* gris neutre bordure */
+    --hover-bg: #f3f4f6;            /* hover clair générique */
+    --surface-selected: #e5e7eb;    /* état sélection clair */
     
     --transition-fast: 0.15s ease;
     --transition-normal: 0.3s ease;
@@ -47,6 +56,14 @@ html {
 /* Fond global en mode sombre */
 html.dark {
     background-color: #111827; /* équivalent Tailwind gray-900 */
+    /* Overrides de palette pour le mode sombre */
+    --surface: #1f2937;          /* gray-800 */
+    --surface-muted: #374151;    /* gray-700 */
+    --surface-alt: #111827;      /* gray-900 */
+    --border-light: #4b5563;     /* gray-600 */
+    --border-muted: #4b5563;     /* idem */
+    --hover-bg: #4b5563;         /* hover sombre générique */
+    --surface-selected: #6b7280; /* gray-500 */
 }
 
 /* Animation de fade-in commune */
@@ -119,7 +136,7 @@ html.dark {
     right: 1rem;
     padding: 1rem;
     border-radius: 0.375rem;
-    background-color: white;
+    background-color: var(--surface);
     box-shadow: var(--shadow);
     z-index: 50;
 }
@@ -215,8 +232,8 @@ html.dark {
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
-    background-color: white;
-    border: 1px solid #ddd;
+    background-color: var(--surface);
+    border: 1px solid var(--border-muted);
     border-top: none;
     border-radius: 0 0 4px 4px;
     z-index: 100;
@@ -225,8 +242,8 @@ html.dark {
 }
 
 .dark .autocomplete-list {
-    background-color: #374151;
-    border-color: #4B5563;
+    background-color: var(--surface-muted);
+    border-color: var(--border-light);
 }
 
 .autocomplete-list.show {
@@ -244,20 +261,20 @@ html.dark {
 }
 
 .autocomplete-item:hover {
-    background-color: #f0f0f0;
+    background-color: var(--hover-bg);
 }
 
 .dark .autocomplete-item:hover {
-    background-color: #4B5563;
+    background-color: var(--hover-bg);
 }
 
 .autocomplete-item.selected {
-    background-color: #e6f7ff;
+    background-color: var(--surface-selected);
 }
 
 .dark .autocomplete-item.selected {
-    background-color: #3B82F6;
-    color: white;
+    background-color: var(--primary-dark);
+    color: var(--text-dark);
 }
 
 /* Styles pour le pied de page */

@@ -25,17 +25,10 @@
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-    outline: none;
-}
+.form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); outline: none; }
 
 /* Styles pour les champs en mode sombre */
-.dark .form-input:focus {
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
-}
+.dark .form-input:focus { border-color: var(--primary-dark); box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3); }
 
 /* Styles pour les datalists et autocomplete */
 datalist {
@@ -63,13 +56,9 @@ input[type="checkbox"] {
     height: 1.1em;
 }
 
-input[type="checkbox"]:checked {
-    accent-color: #3b82f6;
-}
+input[type="checkbox"]:checked { accent-color: var(--primary); }
 
-.dark input[type="checkbox"]:checked {
-    accent-color: #60a5fa;
-}
+.dark input[type="checkbox"]:checked { accent-color: var(--primary-dark); }
 
 /* Styles pour les champs non-GLPI */
 .non-glpi-field {

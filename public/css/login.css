@@ -64,22 +64,13 @@ html.dark .autocomplete-item {
     color: #f3f4f6 !important;
 }
 
-.autocomplete-item:hover {
-    background-color: #f3f4f6;
-    transform: translateX(5px);
-}
+.autocomplete-item:hover { background-color: var(--hover-bg); transform: translateX(5px); }
 
-html.dark .autocomplete-item:hover {
-    background-color: #374151 !important;
-}
+html.dark .autocomplete-item:hover { background-color: var(--hover-bg) !important; }
 
-.autocomplete-item.selected {
-    background-color: #e5e7eb;
-}
+.autocomplete-item.selected { background-color: var(--surface-selected); }
 
-html.dark .autocomplete-item.selected {
-    background-color: #4b5563 !important;
-}
+html.dark .autocomplete-item.selected { background-color: var(--surface-selected) !important; }
 
 /* Masquer la flèche du datalist natif */
 input::-webkit-calendar-picker-indicator {
@@ -208,24 +199,13 @@ html.dark .version-badge:hover {
 }
 
 /* Styles pour le mode sombre */
-.dark .login-card {
-    background-color: #1f2937;
-    color: #f9fafb;
-}
+.dark .login-card { background-color: var(--surface); color: var(--text-dark); }
 
-.dark .login-input {
-    background-color: #374151;
-    border-color: #4b5563;
-    color: #f9fafb;
-}
+.dark .login-input { background-color: var(--surface-muted); border-color: var(--border-light); color: var(--text-dark); }
 
-.dark .login-button {
-    background-color: #3b82f6;
-}
+.dark .login-button { background-color: var(--primary); }
 
-.dark .login-button:hover {
-    background-color: #2563eb;
-}
+.dark .login-button:hover { background-color: var(--primary-hover); }
 
 .dark .login-footer {
     color: #9ca3af;

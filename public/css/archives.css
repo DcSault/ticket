@@ -49,13 +49,9 @@
     transition: background-color 0.2s;
 }
 
-.tag:hover {
-    background-color: #e5e7eb;
-}
+.tag:hover { background-color: var(--surface-selected); }
 
-.dark .tag:hover {
-    background-color: #4b5563;
-}
+.dark .tag:hover { background-color: var(--hover-bg); }
 
 /* Styles pour le modal */
 .modal {
@@ -140,18 +136,9 @@
 }
 
 /* Formulaire de filtrage */
-.filter-form {
-    background-color: #fff;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
+.filter-form { background-color: var(--surface); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
 
-.dark .filter-form {
-    background-color: #1f2937;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
+.dark .filter-form { background-color: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
 
 .form-row {
     display: flex;
@@ -177,20 +164,10 @@
 }
 
 .form-group input,
-.form-group select {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    background-color: #f9fafb;
-}
+.form-group select { width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: 0.375rem; background-color: var(--surface-muted); }
 
 .dark .form-group input,
-.dark .form-group select {
-    background-color: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-}
+.dark .form-group select { background-color: var(--surface-muted); border-color: var(--border-light); color: #e5e7eb; }
 
 .form-actions {
     display: flex;
@@ -205,34 +182,11 @@
 }
 
 /* Modal de détails */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-}
+.modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; }
 
-.modal-content {
-    background-color: #fff;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    width: 90%;
-    max-width: 800px;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
-}
+.modal-content { background-color: var(--surface); border-radius: 0.5rem; padding: 1.5rem; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; position: relative; }
 
-.dark .modal-content {
-    background-color: #1f2937;
-    color: #e5e7eb;
-}
+.dark .modal-content { background-color: var(--surface); color: #e5e7eb; }
 
 .modal-close {
     position: absolute;
