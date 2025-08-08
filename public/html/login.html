@@ -4,24 +4,11 @@
     <title>Login - CallFix</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>
-        window.tailwind = window.tailwind || {};
-        window.tailwind.config = { darkMode: 'class' };
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="/css/login.css" rel="stylesheet">
-    <script>
-        (function(){
-            try {
-                const saved = localStorage.getItem('theme') || localStorage.getItem('color-theme');
-                const isDark = saved ? saved === 'dark' : false;
-                document.documentElement.classList.toggle('dark', isDark);
-            } catch(e) {}
-        })();
-    </script>
 </head>
 
-<body class="bg-white dark:bg-gray-900 min-h-screen page-fade-in">
+<body class="bg-gray-100 min-h-screen page-fade-in">
     <div class="min-h-screen flex items-center justify-center p-4">
         <div class="max-w-md w-full">
             <div class="bg-white p-8 rounded-lg shadow-md form-slide-up">

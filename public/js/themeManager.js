@@ -28,56 +28,21 @@ class ThemeManager {
     }
 
     applyInitialTheme() {
-        // Supporter ancienne clé 'color-theme' et migrer vers 'theme'
-        const legacy = localStorage.getItem('color-theme');
-        if (legacy && !localStorage.getItem('theme')) {
-            localStorage.setItem('theme', legacy);
-        }
-        // Surcharge via URL (?theme=light|dark) pour debug/forçage
-        try {
-            const params = new URLSearchParams(window.location.search);
-            const forced = params.get('theme');
-            if (forced === 'light' || forced === 'dark') {
-                localStorage.setItem('theme', forced);
-                localStorage.setItem('color-theme', forced);
-                // Nettoyer l'URL sans recharger
-                params.delete('theme');
-                const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
-                window.history.replaceState({}, '', newUrl);
-            }
-        } catch (_) {}
-
         const saved = localStorage.getItem('theme');
-        // Par défaut: clair si aucun choix utilisateur
-        const isDark = saved ? saved === 'dark' : false;
-        // Appliquer sans persister tant que l'utilisateur n'a pas choisi
-        const root = document.documentElement;
-        root.classList.toggle('dark', isDark);
-        root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-        try { root.style.colorScheme = isDark ? 'dark' : 'light'; } catch(_) {}
-        const darkIcon = document.getElementById('theme-toggle-dark-icon');
-        const lightIcon = document.getElementById('theme-toggle-light-icon');
-        if (darkIcon && lightIcon) {
-            darkIcon.classList.toggle('hidden', !isDark);
-            lightIcon.classList.toggle('hidden', isDark);
-        }
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = saved ? saved === 'dark' : prefersDark;
+        this.setTheme(isDark);
     }
 
     setTheme(isDark) {
-        const root = document.documentElement;
-        root.classList.toggle('dark', isDark);
-        root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-        try { root.style.colorScheme = isDark ? 'dark' : 'light'; } catch(_) {}
+        document.documentElement.classList.toggle('dark', isDark);
         const darkIcon = document.getElementById('theme-toggle-dark-icon');
         const lightIcon = document.getElementById('theme-toggle-light-icon');
         if (darkIcon && lightIcon) {
             darkIcon.classList.toggle('hidden', !isDark);
             lightIcon.classList.toggle('hidden', isDark);
         }
-        const value = isDark ? 'dark' : 'light';
-        // Ecrire sur les deux clés pour compatibilité
-        localStorage.setItem('theme', value);
-        localStorage.setItem('color-theme', value);
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
         this.updateChartsTheme(isDark);
     }
 
@@ -133,8 +98,7 @@ class ThemeManager {
         const toggle = document.getElementById('theme-toggle');
         if (toggle) {
             toggle.addEventListener('click', () => {
-                const next = !document.documentElement.classList.contains('dark');
-                this.setTheme(next);
+                this.setTheme(!document.documentElement.classList.contains('dark'));
             });
         }
         // Suivre le thème système si aucun thème n'est forcé
