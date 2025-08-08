@@ -24,12 +24,9 @@ const UPLOADS_DIR = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');
 // Middleware Configuration
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use('/uploads', express.static(process.env.UPLOAD_DIR));
+app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Configuration améliorée des fichiers statiques
-app.use('/css', express.static(path.join(__dirname, 'public/css')));
-app.use('/js', express.static(path.join(__dirname, 'public/js')));
-app.use('/img', express.static(path.join(__dirname, 'public/img')));
+// Fichiers statiques
 app.use(express.static('public'));
 
 app.use(session({
@@ -38,8 +35,7 @@ app.use(session({
     saveUninitialized: true
 }));
 
-// Configuration pour servir les fichiers HTML
-app.use('/html', express.static(path.join(__dirname, 'public/html')));
+// Les fichiers HTML sont servis via sendFile sur des routes dédiées
 
 // Multer Configuration
 const storage = multer.diskStorage({
@@ -155,6 +151,7 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
             status: 'open',
             isGLPI: req.body.isGLPI === 'true',
             isBlocking: req.body.isBlocking === 'true',
+            glpiNumber: req.body.isGLPI === 'true' ? (req.body.glpiNumber || null) : null,
             createdBy: req.session.username
         });
 
@@ -166,7 +163,11 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
             ]);
         }
 
-        res.redirect('/');
+        // Par défaut on redirige (soumissions de formulaires). Si requête JSON, retourner JSON
+        if (req.is('application/json')) {
+            return res.status(201).json(ticket);
+        }
+        return res.redirect('/');
     } catch (error) {
         console.error('Erreur création ticket:', error);
         res.status(500).send('Erreur lors de la création du ticket');
@@ -195,6 +196,7 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             tags: req.body.isGLPI === 'true' ? [] : (req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : []),
             isGLPI: req.body.isGLPI === 'true',
             isBlocking: req.body.isBlocking === 'true',
+            glpiNumber: req.body.isGLPI === 'true' ? (req.body.glpiNumber || null) : null,
             lastModifiedBy: req.session.username,
             lastModifiedAt: new Date()
         };
@@ -218,7 +220,7 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         }
 
         await ticket.update(updatedData);
-        res.redirect('/');
+        return res.redirect('/');
     } catch (error) {
         console.error('Erreur modification ticket:', error);
         res.status(500).send('Erreur lors de la modification du ticket');
@@ -235,8 +237,9 @@ app.post('/api/tickets/:id/delete', requireLogin, async (req, res) => {
             // Supprimer les fichiers images associés
             for (const message of ticket.Messages) {
                 if (message.type === 'image' && message.content.startsWith('/uploads/')) {
-                    const imagePath = path.join(__dirname, message.content);
                     try {
+                        const fileName = path.basename(message.content);
+                        const imagePath = path.join(UPLOADS_DIR, fileName);
                         await fsPromises.unlink(imagePath);
                     } catch (err) {
                         console.error('Erreur suppression image:', err);
@@ -268,66 +271,45 @@ app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
     }
 });
 
-// Messages
-app.post('/api/tickets/:id/messages', requireLogin, async (req, res) => {
+// Messages: accepte texte (JSON) ou image (multipart avec champ 'image')
+app.post('/api/tickets/:id/messages', requireLogin, upload.single('image'), async (req, res) => {
     try {
         const ticket = await Ticket.findByPk(req.params.id);
         
         if (!ticket) {
             return res.status(404).json({ error: 'Ticket non trouvé' });
         }
-        
-        // Déterminer le type de message
-        const messageType = req.body.type === 'html' ? 'html' : 'text';
-        
-        // Créer le message
+
+        // Si un fichier image est fourni (multipart)
+        if (req.file) {
+            const message = await Message.create({
+                content: `/uploads/${req.file.filename}`,
+                type: 'image',
+                author: req.session.username,
+                TicketId: ticket.id
+            });
+            return res.status(201).json(message);
+        }
+
+        // Sinon, traiter comme message texte (JSON/application/x-www-form-urlencoded)
+        const content = (req.body && req.body.content) ? String(req.body.content) : '';
+        if (!content.trim()) {
+            return res.status(400).json({ error: 'Contenu du message requis' });
+        }
         const message = await Message.create({
-            content: req.body.content,
-            type: messageType,
+            content,
+            type: 'text',
             author: req.session.username,
             TicketId: ticket.id
         });
-        
-        res.status(201).json(message);
+        return res.status(201).json(message);
     } catch (error) {
         console.error('Erreur ajout message:', error);
         res.status(500).json({ error: 'Erreur lors de l\'ajout du message' });
     }
 });
 
-// Route pour l'upload de fichier (autre que l'image actuelle)
-app.post('/api/tickets/:id/upload', requireLogin, upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'Aucun fichier fourni' });
-        }
-        
-        const ticket = await Ticket.findByPk(req.params.id);
-        if (!ticket) {
-            return res.status(404).json({ error: 'Ticket non trouvé' });
-        }
-        
-        // Déterminer le type basé sur le mimetype
-        let messageType = 'file';
-        if (req.file.mimetype.startsWith('image/')) {
-            messageType = 'image';
-        }
-        
-        // Créer le message
-        const message = await Message.create({
-            content: `/uploads/${req.file.filename}`,
-            fileName: req.file.originalname,
-            type: messageType,
-            author: req.session.username,
-            TicketId: ticket.id
-        });
-        
-        res.status(201).json(message);
-    } catch (error) {
-        console.error('Erreur upload fichier:', error);
-        res.status(500).json({ error: 'Erreur lors de l\'upload du fichier' });
-    }
-});
+// (Route upload dédiée supprimée au profit de /api/tickets/:id/messages)
 
 // Archives
 app.get('/archives', requireLogin, (req, res) => {
@@ -404,17 +386,17 @@ app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
 });
 
 // Stats
-app.get('/stats', (req, res) => {
+app.get('/stats', requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/stats.html'));
 });
 
 // Route pour afficher la page de rapport
-app.get('/report', (req, res) => {
+app.get('/report', requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/report.html'));
 });
 
 // API pour les statistiques
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', requireLogin, async (req, res) => {
     try {
         const tickets = await Ticket.findAll({
             order: [['createdAt', 'DESC']]
@@ -429,7 +411,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // API pour les données de rapport
-app.get('/api/report-data', async (req, res) => {
+app.get('/api/report-data', requireLogin, async (req, res) => {
     try {
         const date = req.query.date ? new Date(req.query.date) : new Date();
         const reportData = await getReportStats(date);
@@ -916,9 +898,8 @@ async function startServer() {
 
         const VERSION = '2.0.6';
         console.log(`🚀 Version du serveur : ${VERSION}`);
-
-
-
+        // Lancer un archivage initial au démarrage
+        archiveOldTickets().catch(err => console.error('Archivage initial échoué:', err));
         app.listen(process.env.PORT, () => {
             console.log(`✨ Serveur démarré sur http://localhost:${process.env.PORT}`);
         });

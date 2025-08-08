@@ -127,101 +127,21 @@ function setupAutocomplete(fieldId, suggestions, isMultiple = false) {
  * @param {Object} fields - Configuration des champs à valider (ex: {name: {required: true}})
  * @returns {boolean} - True si le formulaire est valide, sinon False
  */
-function validateForm(form, fields = {}) {
-    // Supprime les messages d'erreur existants
-    const errorMessages = form.querySelectorAll('.error-message');
-    errorMessages.forEach(msg => msg.remove());
-    
-    // Réinitialise les styles d'erreur
-    form.querySelectorAll('.border-red-500').forEach(el => {
-        el.classList.remove('border-red-500');
-    });
-    
-    let isValid = true;
-    
-    // Si aucun champ spécifié, valide tous les champs requis
-    if (Object.keys(fields).length === 0) {
-        const requiredInputs = form.querySelectorAll('[required]');
-        requiredInputs.forEach(input => {
-            if (!input.value.trim()) {
-                isValid = false;
-                showInputError(input, 'Ce champ est requis');
-            }
-        });
-        return isValid;
-    }
-    
-    // Validation des champs spécifiés
-    for (const fieldName in fields) {
-        const config = fields[fieldName];
-        const input = form.querySelector(`[name="${fieldName}"]`);
-        
-        if (!input) continue;
-        
-        // Validation de champ requis
-        if (config.required && !input.value.trim()) {
-            isValid = false;
-            showInputError(input, config.message || 'Ce champ est requis');
-        }
-        
-        // Validation d'email
-        if (config.email && input.value.trim() && !isValidEmail(input.value)) {
-            isValid = false;
-            showInputError(input, config.message || 'Email invalide');
-        }
-        
-        // Validation de longueur minimale
-        if (config.minLength && input.value.length < config.minLength) {
-            isValid = false;
-            showInputError(input, config.message || `Minimum ${config.minLength} caractères`);
-        }
-        
-        // Validation personnalisée
-        if (config.validator && typeof config.validator === 'function') {
-            const validatorResult = config.validator(input.value);
-            if (validatorResult !== true) {
-                isValid = false;
-                showInputError(input, validatorResult || config.message || 'Valeur invalide');
-            }
-        }
-    }
-    
-    return isValid;
-}
+// validateForm est disponible dans /js/common.js
 
 /**
  * Affiche un message d'erreur sous un champ de formulaire
  * @param {HTMLElement} input - Le champ de formulaire
  * @param {string} message - Le message d'erreur à afficher
  */
-function showInputError(input, message) {
-    const errorElement = document.createElement('div');
-    errorElement.className = 'error-message text-red-500 text-sm mt-1';
-    errorElement.textContent = message;
-    
-    // Ajoute le message après l'input
-    input.parentNode.appendChild(errorElement);
-    
-    // Met en évidence le champ en erreur
-    input.classList.add('border-red-500');
-    
-    // Supprime l'erreur lors de la modification du champ
-    input.addEventListener('input', function() {
-        input.classList.remove('border-red-500');
-        const error = input.parentNode.querySelector('.error-message');
-        if (error) error.remove();
-    }, { once: true });
-}
+// showInputError est disponible dans /js/common.js
 
 /**
  * Vérifie si une adresse email est valide
  * @param {string} email - L'adresse email à vérifier
  * @returns {boolean} - True si l'email est valide, sinon False
  */
-function isValidEmail(email) {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-}
+// isValidEmail est disponible dans /js/common.js
 
 /**
  * Initialise les styles communs pour les formulaires

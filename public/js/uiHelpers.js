@@ -370,20 +370,4 @@ function renderSavedFields(savedFields, containerId = 'savedFieldsSection') {
  * @param {string|Date} dateValue - La date à formater
  * @returns {string} - La date formatée
  */
-function formatDate(dateValue) {
-    // Si la bibliothèque moment est disponible, l'utiliser
-    if (typeof moment !== 'undefined') {
-        // Créer une date à partir de la valeur passée, sans appliquer de conversion de fuseau horaire
-        return moment(dateValue).format('D MMMM YYYY, HH:mm');
-    } else {
-        // Fallback si moment n'est pas disponible
-        const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-        return date.toLocaleString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-} 
+// Utiliser formatDate de /js/common.js

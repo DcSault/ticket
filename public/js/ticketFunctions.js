@@ -8,6 +8,7 @@
  */
 function toggleGLPIFields(checkbox) {
     const nonGLPIFields = document.querySelectorAll('.non-glpi-field');
+    const glpiNumberField = document.getElementById('glpiNumberField');
     nonGLPIFields.forEach(field => {
         const inputs = field.querySelectorAll('input');
         if (checkbox.checked) {
@@ -18,6 +19,9 @@ function toggleGLPIFields(checkbox) {
             inputs.forEach(input => input.required = true);
         }
     });
+    if (glpiNumberField) {
+        glpiNumberField.classList.toggle('hidden', !checkbox.checked);
+    }
 }
 
 /**

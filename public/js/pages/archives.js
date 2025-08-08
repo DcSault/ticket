@@ -36,23 +36,25 @@ async function loadArchives() {
         // Récupérer les paramètres de l'URL
         const urlParams = new URLSearchParams(window.location.search);
         const filters = {};
-        
-        // Ajouter les filtres s'ils sont présents
+
         const search = urlParams.get('search');
         if (search) filters.search = search;
-        
+
         const startDate = urlParams.get('startDate');
         if (startDate) filters.startDate = startDate;
-        
+
         const endDate = urlParams.get('endDate');
         if (endDate) filters.endDate = endDate;
-        
+
         const filter = urlParams.get('filter');
         const value = urlParams.get('value');
-        if (filter && value) filters[filter] = value;
-        
-        // Récupérer les archives
-        const archives = await fetchArchives(filters);
+        if (filter && value) {
+            filters.filter = filter;
+            filters.value = value;
+        }
+
+        // Récupérer les archives via apiClient.js
+        const archives = await fetchArchivedTickets(filters);
         
         // Afficher les archives
         renderArchives(archives);
@@ -67,30 +69,7 @@ async function loadArchives() {
  * @param {Object} filters - Les filtres à appliquer
  * @returns {Promise<Array>} - Les archives
  */
-async function fetchArchives(filters = {}) {
-    try {
-        // Construire l'URL avec les filtres
-        let url = '/api/archives';
-        if (Object.keys(filters).length > 0) {
-            const params = new URLSearchParams();
-            for (const [key, value] of Object.entries(filters)) {
-                params.append(key, value);
-            }
-            url += `?${params.toString()}`;
-        }
-        
-        // Faire la requête
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('Erreur lors de la récupération des archives');
-        }
-        
-        return await response.json();
-    } catch (error) {
-        console.error('Erreur lors de la récupération des archives:', error);
-        return [];
-    }
-}
+// Utiliser fetchArchivedTickets(filters) depuis /js/apiClient.js
 
 /**
  * Affiche les archives dans la page
@@ -269,23 +248,7 @@ function closeModal() {
  * @param {string} dateString - La date à formater
  * @returns {string} - La date formatée
  */
-function formatDate(dateString) {
-    // Si la bibliothèque moment est disponible, l'utiliser
-    if (typeof moment !== 'undefined') {
-        // Créer une date à partir de la valeur passée, sans appliquer de conversion de fuseau horaire
-        return moment(dateString).format('D MMMM YYYY, HH:mm');
-    } else {
-        // Fallback si moment n'est pas disponible
-        const date = new Date(dateString);
-        return date.toLocaleString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-}
+// Utiliser formatDate de /js/common.js
 
 // Ajouter un écouteur pour fermer la modal avec la touche Escape
 document.addEventListener('keydown', function(event) {

@@ -3,19 +3,7 @@
  */
 
 // Gestion des champs GLPI
-function toggleGLPIFields(checkbox) {
-    const nonGLPIFields = document.querySelectorAll('.non-glpi-field');
-    nonGLPIFields.forEach(field => {
-        const inputs = field.querySelectorAll('input');
-        if (checkbox.checked) {
-            field.style.display = 'none';
-            inputs.forEach(input => input.required = false);
-        } else {
-            field.style.display = 'block';
-            inputs.forEach(input => input.required = true);
-        }
-    });
-}
+// toggleGLPIFields est fourni par /js/ticketFunctions.js
 
 // Affichage/masquage des champs mémorisés
 function toggleSavedFields() {

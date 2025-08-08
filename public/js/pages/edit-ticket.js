@@ -2,19 +2,7 @@
  * Gère l'affichage des champs non-GLPI en fonction de l'état de la case à cocher
  * @param {HTMLInputElement} checkbox - La case à cocher GLPI
  */
-function toggleGLPIFields(checkbox) {
-    const nonGLPIFields = document.querySelectorAll('.non-glpi-field');
-    nonGLPIFields.forEach(field => {
-        const inputs = field.querySelectorAll('input');
-        if (checkbox.checked) {
-            field.style.display = 'none';
-            inputs.forEach(input => input.required = false);
-        } else {
-            field.style.display = 'block';
-            inputs.forEach(input => input.required = true);
-        }
-    });
-}
+// toggleGLPIFields est fourni par /js/ticketFunctions.js
 
 /**
  * Valide le formulaire avant soumission

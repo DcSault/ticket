@@ -120,7 +120,8 @@ async function createTicket(ticketData) {
         const response = await fetch('/api/tickets', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(ticketData)
         });
@@ -129,6 +130,11 @@ async function createTicket(ticketData) {
             throw new Error('Erreur lors de la création du ticket');
         }
         
+        // Si le serveur a redirigé (soumission via formulaire), gérer la redirection
+        if (response.redirected) {
+            window.location.href = response.url;
+            return null;
+        }
         return await response.json();
     } catch (error) {
         console.error('Erreur:', error);

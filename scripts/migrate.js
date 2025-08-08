@@ -1,6 +1,6 @@
 // scripts/migrate.js
 const fs = require('fs').promises;
-const { Ticket, Message, SavedField, Tag, User, Archive } = require('../models');
+const { Ticket, Message, SavedField } = require('../models');
 
 async function migrateData() {
     try {
@@ -43,42 +43,11 @@ async function migrateData() {
             ));
         }
 
-        // Migrate archives (if needed)
-        if (oldData.archives) {
-            for (const archiveTicket of oldData.archives) {
-                const newArchive = await Archive.create({
-                    ...archiveTicket,
-                    messages: undefined
-                });
+        // Archives non supportées dans le nouveau modèle (isArchived sur Ticket)
 
-                // Migrate archive messages
-                if (archiveTicket.messages && archiveTicket.messages.length > 0) {
-                    await Promise.all(archiveTicket.messages.map(msg =>
-                        Message.create({
-                            ...msg,
-                            ArchiveId: newArchive.id
-                        })
-                    ));
-                }
-            }
-        }
+        // Tags en base sont stockés dans Ticket.tags (ARRAY), pas de table Tag dédiée
 
-        // Migrate tags (if you have a Tag model)
-        if (oldData.tags && oldData.tags.length > 0) {
-            await Promise.all(oldData.tags.map(tag => 
-                Tag.create({ name: tag })
-            ));
-        }
-
-        // Migrate saved users (if you have a User model)
-        if (oldData.savedUsers && oldData.savedUsers.length > 0) {
-            await Promise.all(oldData.savedUsers.map(username => 
-                User.findOrCreate({ 
-                    where: { username },
-                    defaults: { username }
-                })
-            ));
-        }
+        // Utilisateurs non migrés dans ce script
 
         console.log('Migration completed successfully');
     } catch (error) {
@@ -91,8 +60,7 @@ module.exports = migrateData;
 
 // If running directly
 if (require.main === module) {
-    const sequelize = require('../config/database'); // Adjust path as needed
-
+    const { sequelize } = require('../models');
     sequelize.sync()
         .then(() => migrateData())
         .then(() => {

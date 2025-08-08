@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
             createdBy: document.getElementById('createdBy').value
         };
         
-        // Appel API pour créer le ticket
-        fetch('/api/admin/tickets', {
+        // Soumission vers la route serveur existante
+        fetch('/admin/create-ticket', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -35,14 +35,13 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(formData)
         })
         .then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+                return;
+            }
             if (!response.ok) {
                 throw new Error('Erreur lors de la création du ticket');
             }
-            return response.json();
-        })
-        .then(data => {
-            alert('Ticket créé avec succès!');
-            // Rediriger vers la page d'accueil ou réinitialiser le formulaire
             window.location.href = '/';
         })
         .catch(error => {

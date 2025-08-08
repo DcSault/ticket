@@ -97,6 +97,10 @@ const Ticket = sequelize.define('Ticket', {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     },
+    glpiNumber: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     isBlocking: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
