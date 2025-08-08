@@ -24,6 +24,20 @@ function previousDay() {
     updateReport();
 }
 
+function nextDay() {
+    const dateInput = document.getElementById('reportDate');
+    const currentDate = new Date(dateInput.value);
+    currentDate.setDate(currentDate.getDate() + 1);
+    dateInput.valueAsDate = currentDate;
+    updateReport();
+}
+
+function today() {
+    const dateInput = document.getElementById('reportDate');
+    dateInput.valueAsDate = new Date();
+    updateReport();
+}
+
 // Mise à jour du rapport
 async function updateReport() {
     const date = document.getElementById('reportDate').value;

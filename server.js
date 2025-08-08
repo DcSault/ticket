@@ -386,19 +386,33 @@ app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
 });
 
 // Stats
-app.get('/stats', requireLogin, (req, res) => {
+app.get('/stats', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/stats.html'));
 });
 
 // Route pour afficher la page de rapport
-app.get('/report', requireLogin, (req, res) => {
+app.get('/report', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/report.html'));
 });
 
 // API pour les statistiques
-app.get('/api/stats', requireLogin, async (req, res) => {
+app.get('/api/stats', async (req, res) => {
     try {
+        // Filtres optionnels par date (from/to en ISO yyyy-mm-dd)
+        const { from, to } = req.query;
+        const where = {};
+        if (from || to) {
+            where.createdAt = {};
+            if (from) where.createdAt[Op.gte] = new Date(from);
+            if (to) {
+                const end = new Date(to);
+                end.setHours(23, 59, 59, 999);
+                where.createdAt[Op.lte] = end;
+            }
+        }
+
         const tickets = await Ticket.findAll({
+            where,
             order: [['createdAt', 'DESC']]
         });
 
@@ -411,7 +425,7 @@ app.get('/api/stats', requireLogin, async (req, res) => {
 });
 
 // API pour les données de rapport
-app.get('/api/report-data', requireLogin, async (req, res) => {
+app.get('/api/report-data', async (req, res) => {
     try {
         const date = req.query.date ? new Date(req.query.date) : new Date();
         const reportData = await getReportStats(date);

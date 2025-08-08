@@ -890,6 +890,33 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
+// Raccourcis de plages de dates
+function setTodayRange() {
+    const today = new Date();
+    const start = document.getElementById('startDate');
+    const end = document.getElementById('endDate');
+    if (!start || !end) return;
+    start.valueAsDate = today;
+    end.valueAsDate = today;
+    filterDataByDate();
+}
+
+function setLastNDays(n) {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (n - 1));
+    const start = document.getElementById('startDate');
+    const end = document.getElementById('endDate');
+    if (!start || !end) return;
+    start.valueAsDate = startDate;
+    end.valueAsDate = endDate;
+    filterDataByDate();
+}
+
+function setFullRange() {
+    resetToAllData();
+}
+
 /**
  * Réinitialise la plage de dates pour afficher tous les tickets
  */
