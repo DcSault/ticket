@@ -1,0 +1,115 @@
+/**
+ * CSS d'override radical pour éliminer tout problème de thème
+ * À importer APRÈS Tailwind CSS pour s'assurer que nos styles prennent le dessus
+ */
+
+/* Force le thème sur tous les éléments */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
+
+/* Override complet du body */
+body,
+body.bg-gray-100,
+body.bg-white,
+.dark body,
+[data-theme="dark"] body,
+[data-theme="light"] body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Override pour tous les éléments de surface */
+.bg-white,
+.bg-gray-50,
+.bg-gray-100,
+.bg-gray-200 {
+    background-color: var(--surface) !important;
+}
+
+/* Override pour le texte */
+.text-black,
+.text-gray-900,
+.text-gray-800,
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-600,
+.text-gray-500,
+.text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+.text-gray-400,
+.text-gray-300 {
+    color: var(--text-tertiary) !important;
+}
+
+/* Override pour les bordures */
+.border-gray-200,
+.border-gray-300,
+.border-gray-400 {
+    border-color: var(--border-primary) !important;
+}
+
+/* Override pour les boutons */
+.btn,
+button:not(.demo-button) {
+    background-color: var(--surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.btn-primary,
+.bg-blue-500,
+.bg-blue-600 {
+    background-color: var(--primary) !important;
+    color: white !important;
+}
+
+/* Override pour les inputs */
+input,
+select,
+textarea {
+    background-color: var(--surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+/* Override pour les cartes et conteneurs */
+.card,
+.shadow,
+.shadow-md,
+.shadow-lg,
+.rounded,
+.rounded-lg {
+    background-color: var(--surface) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Règles spéciales pour le mode sombre */
+[data-theme="dark"] *,
+.dark * {
+    border-color: var(--border-primary) !important;
+}
+
+/* Forcer les variables sur les éléments inline avec style */
+[style*="background"] {
+    background-color: var(--surface) !important;
+}
+
+[style*="color"] {
+    color: var(--text-primary) !important;
+}
+
+/* Override spéciaux pour la demo */
+.demo-card * {
+    color: inherit !important;
+}
+
+.demo-grid-item {
+    background-color: var(--surface-muted) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}

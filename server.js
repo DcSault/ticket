@@ -395,6 +395,11 @@ app.get('/report', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/report.html'));
 });
 
+// Route temporaire pour tester le nouveau système de thème
+app.get('/theme-test', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/theme-test.html'));
+});
+
 // API pour les statistiques
 app.get('/api/stats', async (req, res) => {
     try {
