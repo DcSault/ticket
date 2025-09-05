@@ -32,95 +32,94 @@ class ModernThemeManager {
     }
 
     /**
-     * Injecte le bouton de basculement de thème moderne
+     * Injecte le bouton de basculement de thème moderne avec pictogramme élégant
      */
     injectToggleButton() {
-        // Supprime l'ancien bouton s'il existe
-        const oldToggle = document.getElementById('theme-toggle');
-        if (oldToggle) oldToggle.remove();
+        // Retire l'ancien bouton s'il existe
+        const existingButton = document.querySelector('.floating-theme-toggle');
+        if (existingButton) {
+            existingButton.remove();
+        }
 
-        if (document.getElementById('modern-theme-toggle')) return;
-        
-        const toggle = document.createElement('button');
-        toggle.id = 'modern-theme-toggle';
-        toggle.type = 'button';
-        toggle.setAttribute('data-toggle-theme', 'dark,light');
-        toggle.setAttribute('data-act-class', 'theme-active');
-        toggle.setAttribute('aria-label', 'Basculer entre thème sombre et clair');
-        toggle.className = `
-            fixed bottom-4 right-4 z-50 
-            inline-flex items-center justify-center 
-            w-12 h-12 rounded-full 
-            bg-white dark:bg-gray-700 
-            border border-gray-200 dark:border-gray-600
-            text-gray-800 dark:text-gray-100
-            shadow-lg hover:shadow-xl 
-            transition-all duration-300 ease-in-out
-            hover:scale-110 active:scale-95
-            focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800
-            focus:outline-none
-            group theme-transition
-        `.replace(/\s+/g, ' ').trim();
-
-        toggle.innerHTML = `
-            <div class="relative w-6 h-6">
-                <!-- Icône soleil (visible en mode sombre) -->
-                <svg class="sun-icon absolute inset-0 w-6 h-6 text-yellow-500 transition-all duration-500 transform origin-center" 
-                     fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414z" 
-                          clip-rule="evenodd"/>
+        // Crée le nouveau bouton flottant moderne
+        const button = document.createElement('div');
+        button.className = 'floating-theme-toggle';
+        button.setAttribute('data-tooltip', 'Changer de thème');
+        button.innerHTML = `
+            <div class="theme-icon">
+                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
                 </svg>
-                
-                <!-- Icône lune (visible en mode clair) -->
-                <svg class="moon-icon absolute inset-0 w-6 h-6 text-blue-400 transition-all duration-500 transform origin-center" 
-                     fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                 </svg>
             </div>
         `;
 
-        document.body.appendChild(toggle);
-        
-        // Ajouter les écouteurs d'événements personnalisés
-        toggle.addEventListener('click', (e) => {
-            this.addClickEffect(e.currentTarget);
+        // Ajoute l'événement click avec feedback tactile
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleModernToggle(button);
         });
+        
+        // Ajoute des effets de hover
+        button.addEventListener('mouseenter', () => {
+            button.style.transform = 'translateY(-2px) scale(1.05)';
+        });
+        
+        button.addEventListener('mouseleave', () => {
+            button.style.transform = 'translateY(0) scale(1)';
+        });
+        
+        // Ajoute au body
+        document.body.appendChild(button);
+
+        // Met à jour l'icône initiale
+        this.updateToggleIcon();
+        
+        console.log('✨ Bouton de thème flottant moderne injecté');
     }
 
     /**
-     * Ajoute un effet visuel au clic
+     * Gère le clic sur le bouton élégant avec animations
      */
-    addClickEffect(button) {
-        button.style.transform = 'scale(0.95)';
+    handleModernToggle(button) {
+        // Ajoute l'animation de changement
+        const icon = button.querySelector('.theme-icon');
+        if (icon) {
+            icon.classList.add('changing');
+            setTimeout(() => icon.classList.remove('changing'), 600);
+        }
+        
+        // Effet de feedback tactile
+        button.style.transform = 'translateY(0) scale(0.95)';
         setTimeout(() => {
-            button.style.transform = '';
+            button.style.transform = 'translateY(0) scale(1)';
         }, 150);
+        
+        // Change le thème
+        this.toggleTheme();
+        
+        // Met à jour l'icône après un délai
+        setTimeout(() => {
+            this.updateToggleIcon();
+        }, 100);
     }
 
     /**
      * Met à jour l'icône du toggle selon le thème actuel
      */
     updateToggleIcon() {
-        const toggle = document.getElementById('modern-theme-toggle');
-        if (!toggle) return;
-
-        const sunIcon = toggle.querySelector('.sun-icon');
-        const moonIcon = toggle.querySelector('.moon-icon');
-        const isDark = this.getCurrentTheme() === 'dark';
-
-        if (isDark) {
-            // Mode sombre : montrer l'icône soleil
-            sunIcon?.style.setProperty('transform', 'scale(1) rotate(0deg)');
-            sunIcon?.style.setProperty('opacity', '1');
-            moonIcon?.style.setProperty('transform', 'scale(0) rotate(-180deg)');
-            moonIcon?.style.setProperty('opacity', '0');
-        } else {
-            // Mode clair : montrer l'icône lune
-            sunIcon?.style.setProperty('transform', 'scale(0) rotate(180deg)');
-            sunIcon?.style.setProperty('opacity', '0');
-            moonIcon?.style.setProperty('transform', 'scale(1) rotate(0deg)');
-            moonIcon?.style.setProperty('opacity', '1');
-        }
+        const button = document.querySelector('.floating-theme-toggle');
+        if (!button) return;
+        
+        const currentTheme = this.getTheme();
+        const tooltip = currentTheme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre';
+        button.setAttribute('data-tooltip', tooltip);
+        
+        // Les icônes sont automatiquement gérées par le CSS via data-theme
+        console.log(`🎨 Icône mise à jour pour le thème: ${currentTheme}`);
     }
 
     /**

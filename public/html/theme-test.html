@@ -11,6 +11,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="/css/common.css" rel="stylesheet">
     <link href="/css/theme-override.css" rel="stylesheet">
+    <link href="/css/ultra-smooth-theme-button.css" rel="stylesheet">
     
     <style>
         /* Styles spécifiques pour la demo */
@@ -123,14 +124,14 @@
 
     <!-- Scripts -->
     <script src="/js/common.js"></script>
-    <script src="/js/themeManager.js"></script>
+    <script src="/js/ultraThemeManager.js"></script>
     
     <script>
         function updateThemeStatus() {
             const status = document.getElementById('theme-status');
             if (!status) return;
             
-            const theme = window.themeManager?.getTheme() || 'unknown';
+            const theme = window.ultraThemeManager?.getTheme() || 'unknown';
             const dataTheme = document.documentElement.getAttribute('data-theme');
             const darkClass = document.documentElement.classList.contains('dark');
             const localStorageTheme = localStorage.getItem('theme');
@@ -141,7 +142,7 @@
                 <strong>Classe .dark:</strong> ${darkClass ? 'présente' : 'absente'}<br>
                 <strong>localStorage:</strong> ${localStorageTheme || 'non défini'}<br>
                 <strong>Préférence système:</strong> ${window.matchMedia('(prefers-color-scheme: dark)').matches ? 'sombre' : 'clair'}<br>
-                <strong>Theme Manager:</strong> ${window.themeManager ? 'initialisé' : 'non initialisé'}
+                <strong>Ultra Theme Manager:</strong> ${window.ultraThemeManager ? '✨ Initialisé avec animations fluides' : 'non initialisé'}
             `;
         }
         
@@ -154,6 +155,22 @@
         
         // Mise à jour initiale
         setTimeout(updateThemeStatus, 500);
+        
+        // Test des animations après chargement complet
+        setTimeout(() => {
+            if (window.ultraThemeManager) {
+                console.log('✨ Démonstration de l\'effet d\'attention');
+                window.ultraThemeManager.toggleAttention();
+            }
+        }, 3000);
+        
+        // Fonction pour tester les animations
+        window.testAnimations = function() {
+            if (window.ultraThemeManager) {
+                console.log('🎭 Test des animations du bouton');
+                window.ultraThemeManager.toggleAttention();
+            }
+        };
     </script>
 </body>
 </html>
