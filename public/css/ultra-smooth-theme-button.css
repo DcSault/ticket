@@ -1,178 +1,195 @@
-/* Bouton de thème ultra-moderne et smooth */
-.ultra-smooth-theme-button {
+/**
+ * Bouton de thème ultra-moderne avec pictogrammes améliorés
+ * Design adaptatif pour mode clair et sombre
+ */
+
+.ultra-modern-theme-toggle {
+    /* Positionnement */
     position: fixed;
     bottom: 24px;
     right: 24px;
     z-index: 9999;
     
+    /* Apparence */
     width: 56px;
     height: 56px;
     border-radius: 50%;
+    border: none;
+    cursor: pointer;
     
-    /* Fond glassmorphism */
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    /* Fond adaptatif */
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     
-    /* Ombres modernes */
+    /* Ombre douce */
     box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.12),
-        0 2px 8px rgba(0, 0, 0, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 4px 16px rgba(0, 0, 0, 0.1),
+        0 2px 8px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     
-    /* Transitions ultra-smooth */
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Transitions ultra-fluides */
+    transition: 
+        all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease,
+        backdrop-filter 0.3s ease;
     
     /* Centrage du contenu */
     display: flex;
     align-items: center;
     justify-content: center;
     
-    /* Curseur */
-    cursor: pointer;
-    
-    /* Supprime les styles par défaut */
-    border: none;
-    outline: none;
-    padding: 0;
+    /* Effet de survol */
+    transform: scale(1);
 }
 
-/* États du bouton */
-.ultra-smooth-theme-button:hover {
-    transform: scale(1.1) translateY(-2px);
+.ultra-modern-theme-toggle:hover {
+    transform: scale(1.1) rotate(5deg);
     box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.15),
-        0 4px 12px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.15);
+        0 8px 24px rgba(0, 0, 0, 0.15),
+        0 4px 12px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.ultra-smooth-theme-button:active {
-    transform: scale(0.95) translateY(0px);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.ultra-modern-theme-toggle:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
 }
 
-/* Styles pour le mode sombre */
-[data-theme="dark"] .ultra-smooth-theme-button,
-.dark .ultra-smooth-theme-button {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.3),
-        0 2px 8px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+/* Mode sombre - Fond adaptatif */
+/* Mode sombre - Fond adaptatif avec !important pour forcer */
+[data-theme="dark"] .ultra-modern-theme-toggle,
+.dark .ultra-modern-theme-toggle {
+    background: rgba(30, 41, 59, 0.9) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
-[data-theme="dark"] .ultra-smooth-theme-button:hover,
-.dark .ultra-smooth-theme-button:hover {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.4),
-        0 4px 12px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+[data-theme="dark"] .ultra-modern-theme-toggle:hover,
+.dark .ultra-modern-theme-toggle:hover {
+    background: rgba(30, 41, 59, 0.95) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Conteneur des icônes */
 .theme-icon-container {
     position: relative;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* Icônes SVG */
+/* Icônes Unicode */
 .theme-icon {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 24px;
-    height: 24px;
     transform: translate(-50%, -50%);
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 24px;
+    line-height: 1;
+    transition: 
+        opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        filter 0.3s ease;
 }
 
-/* Icône soleil (visible en mode clair) */
+/* Icône soleil (mode clair) */
 .sun-icon {
-    color: #f59e0b;
     opacity: 1;
-    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 8px rgba(255, 193, 7, 0.4));
 }
 
-/* Icône lune (cachée en mode clair) */
+/* Icône lune (mode sombre) */
 .moon-icon {
-    color: #60a5fa;
     opacity: 0;
-    transform: translate(-50%, -50%) rotate(-180deg) scale(0.5);
+    transform: translate(-50%, -50%) scale(0.8) rotate(-45deg);
+    filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.4));
 }
 
 /* États des icônes en mode sombre */
 [data-theme="dark"] .sun-icon,
 .dark .sun-icon {
     opacity: 0;
-    transform: translate(-50%, -50%) rotate(180deg) scale(0.5);
+    transform: translate(-50%, -50%) scale(0.8) rotate(45deg);
 }
 
 [data-theme="dark"] .moon-icon,
 .dark .moon-icon {
     opacity: 1;
-    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
 }
 
-/* Animation lors du changement */
-.ultra-smooth-theme-button.clicked .theme-icon {
-    animation: iconSpin 0.6s ease-in-out;
+/* Animation de rotation au survol */
+.ultra-modern-theme-toggle:hover .sun-icon {
+    transform: translate(-50%, -50%) scale(1.1) rotate(180deg);
 }
 
-@keyframes iconSpin {
-    0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-    50% { transform: translate(-50%, -50%) rotate(180deg) scale(0.8); }
-    100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); }
+.ultra-modern-theme-toggle:hover .moon-icon {
+    transform: translate(-50%, -50%) scale(1.1) rotate(-15deg);
 }
 
-/* Animation de pulsation subtile */
-.ultra-smooth-theme-button {
-    animation: subtle-pulse 3s ease-in-out infinite;
+[data-theme="dark"] .ultra-modern-theme-toggle:hover .sun-icon,
+.dark .ultra-modern-theme-toggle:hover .sun-icon {
+    transform: translate(-50%, -50%) scale(0.9) rotate(225deg);
 }
 
+[data-theme="dark"] .ultra-modern-theme-toggle:hover .moon-icon,
+.dark .ultra-modern-theme-toggle:hover .moon-icon {
+    transform: translate(-50%, -50%) scale(1.1) rotate(-15deg);
+}
+
+/* Effet de pulsation subtile */
 @keyframes subtle-pulse {
-    0%, 100% { 
+    0%, 100% {
         box-shadow: 
-            0 8px 32px rgba(0, 0, 0, 0.12),
-            0 2px 8px rgba(0, 0, 0, 0.08),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            0 4px 16px rgba(0, 0, 0, 0.1),
+            0 2px 8px rgba(0, 0, 0, 0.06),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
-    50% { 
+    50% {
         box-shadow: 
-            0 8px 32px rgba(59, 130, 246, 0.2),
-            0 2px 8px rgba(59, 130, 246, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            0 6px 20px rgba(0, 0, 0, 0.12),
+            0 3px 10px rgba(0, 0, 0, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
     }
 }
 
-/* Supprime l'animation au hover */
-.ultra-smooth-theme-button:hover {
-    animation: none;
+/* Animation au focus pour l'accessibilité */
+.ultra-modern-theme-toggle:focus {
+    outline: none;
+    animation: subtle-pulse 2s ease-in-out infinite;
 }
 
-/* Responsive design */
-@media (max-width: 640px) {
-    .ultra-smooth-theme-button {
-        bottom: 16px;
-        right: 16px;
+/* Adaptation responsive */
+@media (max-width: 768px) {
+    .ultra-modern-theme-toggle {
         width: 48px;
         height: 48px;
+        bottom: 20px;
+        right: 20px;
     }
     
-    .theme-icon-container {
-        width: 20px;
-        height: 20px;
-    }
-    
+    .theme-icon-container,
     .theme-icon {
         width: 20px;
         height: 20px;
+    }
+}
+
+/* Réduction du mouvement pour l'accessibilité */
+@media (prefers-reduced-motion: reduce) {
+    .ultra-modern-theme-toggle,
+    .theme-icon {
+        transition: opacity 0.2s ease, background-color 0.2s ease !important;
+    }
+    
+    .ultra-modern-theme-toggle:hover {
+        transform: none !important;
+    }
+    
+    .ultra-modern-theme-toggle:focus {
+        animation: none !important;
     }
 }

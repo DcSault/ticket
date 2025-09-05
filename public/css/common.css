@@ -1,5 +1,12 @@
 /* Styles communs pour toutes les pages de l'application */
 
+/* Imports des styles de thème */
+@import url('theme-override.css');
+@import url('floating-theme-button.css');
+@import url('ultra-smooth-theme-button.css');
+@import url('dark-mode-colors.css');
+@import url('advanced-theme-animations.css');
+
 /* Variables CSS pour les couleurs et transitions - Version moderne avec data-theme */
 :root {
     --primary: #3b82f6;

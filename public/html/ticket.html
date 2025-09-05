@@ -4,16 +4,16 @@
    <title>Détails du Ticket</title>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   
+   <!-- Initialisation du thème AVANT tout le reste -->
+   <script src="/js/theme-init.js"></script>
+   
    <script>
        window.tailwind = window.tailwind || {};
        window.tailwind.config = { darkMode: 'class' };
    </script>
    <script src="https://cdn.tailwindcss.com"></script>
    <link href="/css/ticket.css" rel="stylesheet">
-   <script>
-       (function(){
-           try {
-               const saved = localStorage.getItem('theme') || localStorage.getItem('color-theme');
                const isDark = saved ? saved === 'dark' : false;
                document.documentElement.classList.toggle('dark', isDark);
            } catch(e) {}
