@@ -1,5 +1,5 @@
 /**
- * Gestionnaire de thème moderne utilisant la bibliothèque theme-change
+ * Gestionnaire de thème ultra-moderne utilisant la bibliothèque theme-change
  * Compatible avec Tailwind CSS et les data attributes
  * Support: system preference, persistance localStorage, Chart.js
  */
@@ -32,71 +32,61 @@ class ModernThemeManager {
     }
 
     /**
-     * Injecte le bouton de basculement de thème moderne avec pictogramme élégant
+     * Injecte le bouton de basculement de thème ultra-moderne
      */
     injectToggleButton() {
-        // Retire l'ancien bouton s'il existe
-        const existingButton = document.querySelector('.floating-theme-toggle');
-        if (existingButton) {
-            existingButton.remove();
-        }
+        // Supprime tous les anciens boutons s'ils existent
+        const oldButtons = document.querySelectorAll('#theme-toggle, #modern-theme-toggle, #ultra-theme-button, .floating-theme-toggle');
+        oldButtons.forEach(btn => btn.remove());
 
-        // Crée le nouveau bouton flottant moderne
-        const button = document.createElement('div');
-        button.className = 'floating-theme-toggle';
-        button.setAttribute('data-tooltip', 'Changer de thème');
+        if (document.getElementById('ultra-theme-button')) return;
+        
+        const button = document.createElement('button');
+        button.id = 'ultra-theme-button';
+        button.type = 'button';
+        button.className = 'ultra-smooth-theme-button';
+        button.setAttribute('aria-label', 'Basculer entre thème sombre et clair');
+        button.setAttribute('title', 'Changer le thème');
+
         button.innerHTML = `
-            <div class="theme-icon">
-                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="5"/>
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            <div class="theme-icon-container">
+                <!-- Icône soleil (visible en mode clair) -->
+                <svg class="theme-icon sun-icon" fill="currentColor" viewBox="0 0 24 24" stroke="none">
+                    <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
                 </svg>
-                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                
+                <!-- Icône lune (visible en mode sombre) -->
+                <svg class="theme-icon moon-icon" fill="currentColor" viewBox="0 0 24 24" stroke="none">
+                    <path d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z"/>
                 </svg>
             </div>
         `;
 
-        // Ajoute l'événement click avec feedback tactile
+        document.body.appendChild(button);
+        
+        // Ajouter l'écouteur d'événement
         button.addEventListener('click', (e) => {
             e.preventDefault();
-            this.handleModernToggle(button);
+            e.stopPropagation();
+            this.handleModernToggle();
         });
         
-        // Ajoute des effets de hover
-        button.addEventListener('mouseenter', () => {
-            button.style.transform = 'translateY(-2px) scale(1.05)';
-        });
-        
-        button.addEventListener('mouseleave', () => {
-            button.style.transform = 'translateY(0) scale(1)';
-        });
-        
-        // Ajoute au body
-        document.body.appendChild(button);
-
-        // Met à jour l'icône initiale
+        // Initialiser l'état visuel
         this.updateToggleIcon();
         
-        console.log('✨ Bouton de thème flottant moderne injecté');
+        console.log('✅ Ultra-modern theme button created and attached');
     }
 
     /**
-     * Gère le clic sur le bouton élégant avec animations
+     * Gère le clic sur le bouton avec animations fluides
      */
-    handleModernToggle(button) {
-        // Ajoute l'animation de changement
-        const icon = button.querySelector('.theme-icon');
-        if (icon) {
-            icon.classList.add('changing');
-            setTimeout(() => icon.classList.remove('changing'), 600);
-        }
-        
-        // Effet de feedback tactile
-        button.style.transform = 'translateY(0) scale(0.95)';
-        setTimeout(() => {
-            button.style.transform = 'translateY(0) scale(1)';
-        }, 150);
+    handleModernToggle() {
+        const button = document.getElementById('ultra-theme-button');
+        if (!button) return;
+
+        // Animation de clic
+        button.classList.add('clicked');
+        setTimeout(() => button.classList.remove('clicked'), 200);
         
         // Change le thème
         this.toggleTheme();
@@ -111,14 +101,18 @@ class ModernThemeManager {
      * Met à jour l'icône du toggle selon le thème actuel
      */
     updateToggleIcon() {
-        const button = document.querySelector('.floating-theme-toggle');
+        const button = document.getElementById('ultra-theme-button');
         if (!button) return;
         
         const currentTheme = this.getTheme();
-        const tooltip = currentTheme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre';
-        button.setAttribute('data-tooltip', tooltip);
+        const isDark = currentTheme === 'dark';
         
-        // Les icônes sont automatiquement gérées par le CSS via data-theme
+        // Met à jour le titre du bouton
+        button.setAttribute('title', isDark ? 'Passer en mode clair' : 'Passer en mode sombre');
+        
+        // Met à jour les classes pour l'affichage des icônes
+        button.setAttribute('data-theme', currentTheme);
+        
         console.log(`🎨 Icône mise à jour pour le thème: ${currentTheme}`);
     }
 

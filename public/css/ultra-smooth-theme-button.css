@@ -1,0 +1,178 @@
+/* Bouton de thème ultra-moderne et smooth */
+.ultra-smooth-theme-button {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    
+    /* Fond glassmorphism */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    
+    /* Ombres modernes */
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.12),
+        0 2px 8px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    
+    /* Transitions ultra-smooth */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Centrage du contenu */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Curseur */
+    cursor: pointer;
+    
+    /* Supprime les styles par défaut */
+    border: none;
+    outline: none;
+    padding: 0;
+}
+
+/* États du bouton */
+.ultra-smooth-theme-button:hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.15),
+        0 4px 12px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.ultra-smooth-theme-button:active {
+    transform: scale(0.95) translateY(0px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Styles pour le mode sombre */
+[data-theme="dark"] .ultra-smooth-theme-button,
+.dark .ultra-smooth-theme-button {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .ultra-smooth-theme-button:hover,
+.dark .ultra-smooth-theme-button:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Conteneur des icônes */
+.theme-icon-container {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Icônes SVG */
+.theme-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Icône soleil (visible en mode clair) */
+.sun-icon {
+    color: #f59e0b;
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+}
+
+/* Icône lune (cachée en mode clair) */
+.moon-icon {
+    color: #60a5fa;
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-180deg) scale(0.5);
+}
+
+/* États des icônes en mode sombre */
+[data-theme="dark"] .sun-icon,
+.dark .sun-icon {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(180deg) scale(0.5);
+}
+
+[data-theme="dark"] .moon-icon,
+.dark .moon-icon {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+}
+
+/* Animation lors du changement */
+.ultra-smooth-theme-button.clicked .theme-icon {
+    animation: iconSpin 0.6s ease-in-out;
+}
+
+@keyframes iconSpin {
+    0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+    50% { transform: translate(-50%, -50%) rotate(180deg) scale(0.8); }
+    100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); }
+}
+
+/* Animation de pulsation subtile */
+.ultra-smooth-theme-button {
+    animation: subtle-pulse 3s ease-in-out infinite;
+}
+
+@keyframes subtle-pulse {
+    0%, 100% { 
+        box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.12),
+            0 2px 8px rgba(0, 0, 0, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    50% { 
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.2),
+            0 2px 8px rgba(59, 130, 246, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+}
+
+/* Supprime l'animation au hover */
+.ultra-smooth-theme-button:hover {
+    animation: none;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+    .ultra-smooth-theme-button {
+        bottom: 16px;
+        right: 16px;
+        width: 48px;
+        height: 48px;
+    }
+    
+    .theme-icon-container {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .theme-icon {
+        width: 20px;
+        height: 20px;
+    }
+}
