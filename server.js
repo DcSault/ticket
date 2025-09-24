@@ -418,16 +418,22 @@ app.get('/theme-test', (req, res) => {
 app.get('/api/stats', async (req, res) => {
     try {
         // Filtres optionnels par date (from/to en ISO yyyy-mm-dd)
-        const { from, to } = req.query;
         const where = {};
-        if (from || to) {
+        let startDate, endDate;
+
+        if (from) {
+            // Interpréter la date comme étant dans le fuseau horaire local
+            startDate = toZonedTime(new Date(from), timeZone);
+        }
+        if (to) {
+            // Interpréter la date et définir la fin de journée
+            endDate = endOfDay(toZonedTime(new Date(to), timeZone));
+        }
+
+        if (startDate || endDate) {
             where.createdAt = {};
-            if (from) where.createdAt[Op.gte] = new Date(from);
-            if (to) {
-                const end = new Date(to);
-                end.setHours(23, 59, 59, 999);
-                where.createdAt[Op.lte] = end;
-            }
+            if (startDate) where.createdAt[Op.gte] = startDate;
+            if (endDate) where.createdAt[Op.lte] = endDate;
         }
 
         const tickets = await Ticket.findAll({
@@ -435,7 +441,7 @@ app.get('/api/stats', async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
-        const stats = await processStats(tickets, from ? new Date(from) : null, to ? new Date(to) : null);
+        const stats = await processStats(tickets, startDate, endDate);
         res.json(stats);
     } catch (error) {
         console.error('Erreur stats API:', error);

@@ -71,6 +71,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 form.elements['glpiNumber'].value = ticket.glpiNumber || '';
                 form.elements['reason'].value = ticket.reason || '';
                 form.elements['tags'].value = ticket.tags ? ticket.tags.join(', ') : '';
+
+                // Remplir les champs de date et d'heure
+                const createdAt = new Date(ticket.createdAt);
+                form.elements['creationDate'].value = createdAt.toISOString().split('T')[0];
+                form.elements['creationTime'].value = createdAt.toTimeString().split(' ')[0].substring(0, 5);
                 
                 // Gérer l'affichage des champs GLPI
                 toggleGLPIFields(form.elements['isGLPI']);
