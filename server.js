@@ -19,6 +19,7 @@ const { startOfDay, startOfWeek, startOfMonth, subDays, subWeeks, subMonths, eac
 
 // Import des modèles
 const { sequelize, User, Ticket, Message, SavedField } = require('./models');
+const { Op } = require('sequelize');
 
 const app = express();
 const UPLOADS_DIR = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');
