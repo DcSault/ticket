@@ -1,19 +1,5 @@
 const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
-const moment = require('moment-timezone');
-
-// Fonction pour détecter dynamiquement le décalage horaire actuel pour Europe/Paris
-function getCurrentTimezoneOffset() {
-    // Obtenir le décalage horaire actuel pour Europe/Paris en minutes
-    const offsetInMinutes = moment().tz('Europe/Paris').utcOffset();
-    // Convertir en format +HH:00
-    const hours = Math.abs(Math.floor(offsetInMinutes / 60));
-    const sign = offsetInMinutes >= 0 ? '+' : '-';
-    return `${sign}${String(hours).padStart(2, '0')}:00`;
-}
-
-const currentOffset = getCurrentTimezoneOffset();
-console.log(`Décalage horaire actuel pour Europe/Paris: ${currentOffset}`);
 
 const sequelize = new Sequelize({
     dialect: 'postgres',
@@ -23,34 +9,13 @@ const sequelize = new Sequelize({
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
     logging: false,
-    timezone: '+00:00',
-    dialectOptions: {
-        useUTC: true,
-        dateStrings: true,
-        typeCast: true
-    },
-    define: {
-        timestamps: true,
-        hooks: {
-            beforeCreate: (record) => {
-                // Supprimer les hooks de conversion de fuseau horaire
-                // qui peuvent créer des décalages supplémentaires
-            }
-        }
-    }
+    // Le support du fuseau horaire de Sequelize avec PostgreSQL est robuste.
+    // Il est recommandé de stocker les dates en UTC (comportement par défaut)
+    // et de les convertir dans le fuseau horaire de l'utilisateur au niveau de l'application.
+    timezone: '+00:00', 
 });
 
-// Fonctions utilitaires pour les dates - sans conversion de fuseau horaire
-const dateHooks = {
-    beforeCreate: (record) => {
-        // Supprimer la conversion qui crée un double décalage
-    },
-    beforeUpdate: (record) => {
-        // Supprimer la conversion qui crée un double décalage
-    }
-};
-
-// Définir les modèles
+// Pas besoin de hooks pour les dates, Sequelize gère bien l'UTC.
 const User = sequelize.define('User', {
     id: {
         type: DataTypes.UUID,
@@ -67,7 +32,6 @@ const User = sequelize.define('User', {
         allowNull: true
     }
 }, {
-    hooks: dateHooks,
     tableName: 'users'
 });
 
@@ -130,7 +94,6 @@ const Ticket = sequelize.define('Ticket', {
         allowNull: true
     }
 }, {
-    hooks: dateHooks,
     tableName: 'tickets'
 });
 
@@ -153,7 +116,6 @@ const Message = sequelize.define('Message', {
         allowNull: false
     }
 }, {
-    hooks: dateHooks,
     tableName: 'messages'
 });
 
@@ -172,8 +134,8 @@ const SavedField = sequelize.define('SavedField', {
         allowNull: false
     }
 }, {
-    hooks: dateHooks,
     tableName: 'saved_fields',
+    timestamps: false, // Ce modèle n'a pas besoin de timestamps
     indexes: [
         {
             unique: true,

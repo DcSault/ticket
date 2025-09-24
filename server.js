@@ -12,11 +12,14 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const cron = require('node-cron');
 const { Op } = require('sequelize');
-
+const { toZonedTime, format } = require('date-fns-tz');
+const { startOfDay, startOfWeek, startOfMonth, subDays, subWeeks, subMonths, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth } = require('date-fns');
 
 // Import des modèles
 const { sequelize, User, Ticket, Message, SavedField } = require('./models');
+const { Op } = require('sequelize');
 
 const app = express();
 const UPLOADS_DIR = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');
@@ -87,8 +90,14 @@ async function archiveOldTickets() {
     }
 }
 
-// Appel de la fonction toutes les 24 heures
-setInterval(archiveOldTickets, 24 * 60 * 60 * 1000);
+// Tâche cron pour archiver les vieux tickets tous les jours à 1h du matin
+cron.schedule('0 1 * * *', () => {
+    console.log('Exécution de la tâche d\'archivage des anciens tickets...');
+    archiveOldTickets();
+}, {
+    scheduled: true,
+    timezone: "Europe/Paris"
+});
 
 // Configuration pour utiliser uniquement les fichiers HTML
 
@@ -142,25 +151,30 @@ app.get('/', requireLogin, (req, res) => {
 // Routes des tickets
 app.post('/api/tickets', requireLogin, async (req, res) => {
     try {
-        const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
-        
-        const ticket = await Ticket.create({
+        const tags = req.body.tags ? (Array.isArray(req.body.tags) ? req.body.tags : String(req.body.tags).split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)) : [];
+
+        // Données par défaut pour un nouveau ticket
+        const ticketPayload = {
             caller: req.body.caller,
             reason: req.body.reason || '',
             tags: tags,
-            status: 'open',
-            isGLPI: req.body.isGLPI === 'true',
-            isBlocking: req.body.isBlocking === 'true',
-            glpiNumber: req.body.isGLPI === 'true' ? (req.body.glpiNumber || null) : null,
-            createdBy: req.session.username
-        });
+            status: req.body.status || 'open',
+            isGLPI: req.body.isGLPI === 'true' || req.body.isGLPI === true,
+            isBlocking: req.body.isBlocking === 'true' || req.body.isBlocking === true,
+            glpiNumber: (req.body.isGLPI === 'true' || req.body.isGLPI === true) ? (req.body.glpiNumber || null) : null,
+            createdBy: req.body.createdBy || req.session.username, // Priorité au corps de la requête
+            createdAt: req.body.createdAt ? new Date(req.body.createdAt) : new Date() // Priorité au corps de la requête
+        };
+
+        const ticket = await Ticket.create(ticketPayload);
 
         if (!ticket.isGLPI) {
-            await Promise.all([
-                SavedField.findOrCreate({ where: { type: 'caller', value: req.body.caller }}),
-                req.body.reason && SavedField.findOrCreate({ where: { type: 'reason', value: req.body.reason }}),
-                ...tags.map(tag => SavedField.findOrCreate({ where: { type: 'tag', value: tag }}))
-            ]);
+            const fieldsToSave = [
+                { type: 'caller', value: req.body.caller },
+                { type: 'reason', value: req.body.reason }
+            ];
+            tags.forEach(tag => fieldsToSave.push({ type: 'tag', value: tag }));
+            await saveFields(fieldsToSave);
         }
 
         // Par défaut on redirige (soumissions de formulaires). Si requête JSON, retourner JSON
@@ -213,14 +227,15 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         }
 
         if (!updatedData.isGLPI) {
-            await Promise.all([
-                SavedField.findOrCreate({ where: { type: 'caller', value: req.body.caller }}),
-                req.body.reason && SavedField.findOrCreate({ where: { type: 'reason', value: req.body.reason }})
-            ]);
+            const fieldsToSave = [
+                { type: 'caller', value: req.body.caller },
+                { type: 'reason', value: req.body.reason }
+            ];
+            await saveFields(fieldsToSave);
         }
 
         await ticket.update(updatedData);
-        return res.redirect('/');
+        return res.json({ success: true, message: 'Ticket mis à jour avec succès' });
     } catch (error) {
         console.error('Erreur modification ticket:', error);
         res.status(500).send('Erreur lors de la modification du ticket');
@@ -421,7 +436,7 @@ app.get('/api/stats', async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
-        const stats = await processStats(tickets);
+        const stats = await processStats(tickets, from ? new Date(from) : null, to ? new Date(to) : null);
         res.json(stats);
     } catch (error) {
         console.error('Erreur stats API:', error);
@@ -441,76 +456,24 @@ app.get('/api/report-data', async (req, res) => {
     }
 });
 
-// Fonction pour calculer automatiquement les dates de changement d'heure en France
-function getFrenchDSTDates(year) {
-    // Règle européenne: dernier dimanche de mars à 2h00 -> dernier dimanche d'octobre à 3h00
-    
-    // Trouver le dernier dimanche de mars
-    const march31 = new Date(Date.UTC(year, 2, 31)); // 31 mars
-    const lastSundayMarch = new Date(march31);
-    const daysToSubtract = march31.getUTCDay(); // 0 = dimanche, 1 = lundi, etc.
-    lastSundayMarch.setUTCDate(31 - daysToSubtract);
-    lastSundayMarch.setUTCHours(2, 0, 0, 0); // 2h00 du matin
-    
-    // Trouver le dernier dimanche d'octobre
-    const october31 = new Date(Date.UTC(year, 9, 31)); // 31 octobre
-    const lastSundayOctober = new Date(october31);
-    const daysToSubtractOct = october31.getUTCDay();
-    lastSundayOctober.setUTCDate(31 - daysToSubtractOct);
-    lastSundayOctober.setUTCHours(3, 0, 0, 0); // 3h00 du matin
-    
-    return {
-        startDST: lastSundayMarch,    // Début heure d'été
-        endDST: lastSundayOctober     // Fin heure d'été
-    };
-}
-
 // Fonction pour obtenir l'heure locale française
 function getFrenchLocalHour(dateString) {
     const date = new Date(dateString);
-    const year = date.getUTCFullYear();
-    
-    // Obtenir les dates de changement d'heure pour l'année
-    const dstDates = getFrenchDSTDates(year);
-    
-    // Déterminer si on est en heure d'été (DST)
-    const isDST = date >= dstDates.startDST && date < dstDates.endDST;
-    const offset = isDST ? 2 : 1; // UTC+2 en été, UTC+1 en hiver
-    
-    // Calculer l'heure locale française
-    const utcHour = date.getUTCHours();
-    const frenchHour = (utcHour + offset) % 24;
-    
-
-    
-    return frenchHour;
+    const zonedDate = toZonedTime(date, 'Europe/Paris');
+    return zonedDate.getHours();
 }
 
 // Fonction pour normaliser une date en heure locale française
 function normalizeFrenchDate(dateString) {
     const date = new Date(dateString);
-    const year = date.getUTCFullYear();
-    
-    // Obtenir les dates de changement d'heure pour l'année
-    const dstDates = getFrenchDSTDates(year);
-    
-    // Déterminer si on est en heure d'été (DST)
-    const isDST = date >= dstDates.startDST && date < dstDates.endDST;
-    const offset = isDST ? 2 : 1; // UTC+2 en été, UTC+1 en hiver
-    
-    // Créer une nouvelle date avec l'heure locale française
-    const frenchDate = new Date(date.getTime() + (offset * 60 * 60 * 1000));
-    
-    return frenchDate;
+    return toZonedTime(date, 'Europe/Paris');
 }
 
 // Fonction pour générer les statistiques du rapport
 async function getReportStats(date) {
-    // Statistiques quotidiennes
-    const dayStart = new Date(date);
-    dayStart.setHours(0,0,0,0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23,59,59,999);
+    const timeZone = 'Europe/Paris';
+    const dayStart = startOfDay(toZonedTime(date, timeZone));
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
     const tickets = await Ticket.findAll({
         where: {
@@ -520,66 +483,66 @@ async function getReportStats(date) {
         }
     });
 
-    // Si aucun ticket, retourner des valeurs par défaut
     if (tickets.length === 0) {
         return {
-            total: 0,
-            glpi: 0,
-            blocking: 0,
+            total: 0, glpi: 0, blocking: 0,
             hourlyDistribution: Array(24).fill(0),
-            morningTickets: 0,
-            afternoonTickets: 0,
-            morningRatio: 0,
-            afternoonRatio: 0,
-            topCallers: {},
-            topTags: {}
+            morningTickets: 0, afternoonTickets: 0,
+            morningRatio: 0, afternoonRatio: 0,
+            topCallers: {}, topTags: {}
         };
     }
 
-    // Calculer les ratios et tranches horaires
-    // Normaliser les dates pour éviter les problèmes de fuseau horaire
-    const morningTickets = tickets.filter(t => {
-        const localHour = getFrenchLocalHour(t.createdAt);
-        return localHour < 12;
-    });
-    const afternoonTickets = tickets.filter(t => {
-        const localHour = getFrenchLocalHour(t.createdAt);
-        return localHour >= 12;
-    });
-
+    let morningTickets = 0;
     const hourlyDistribution = Array(24).fill(0);
-    tickets.forEach(t => {
-        const hour = getFrenchLocalHour(t.createdAt);
-        hourlyDistribution[hour]++;
-    });
-
-    // Calculer les statistiques des appelants et des tags
     const topCallers = {};
     const topTags = {};
 
     tickets.forEach(ticket => {
-        // Comptabiliser les appelants
-        topCallers[ticket.caller] = (topCallers[ticket.caller] || 0) + 1;
+        const ticketDate = toZonedTime(ticket.createdAt, timeZone);
+        const hour = ticketDate.getHours();
+        
+        hourlyDistribution[hour]++;
+        if (hour < 12) {
+            morningTickets++;
+        }
 
-        // Comptabiliser les tags
+        if (ticket.caller) {
+            topCallers[ticket.caller] = (topCallers[ticket.caller] || 0) + 1;
+        }
+
         if (ticket.tags && Array.isArray(ticket.tags)) {
             ticket.tags.forEach(tag => {
-                topTags[tag] = (topTags[tag] || 0) + 1;
+                if (tag) {
+                    topTags[tag] = (topTags[tag] || 0) + 1;
+                }
             });
         }
     });
 
+    const total = tickets.length;
+    const afternoonTickets = total - morningTickets;
+
+    // Trier et formater les top appelants et tags
+    const topCallersList = Object.entries(topCallers)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    const topTagsList = Object.entries(topTags)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
     return {
-        total: tickets.length,
+        total,
         glpi: tickets.filter(t => t.isGLPI).length,
         blocking: tickets.filter(t => t.isBlocking).length,
-        morningTickets: morningTickets.length,
-        afternoonTickets: afternoonTickets.length,
-        morningRatio: tickets.length > 0 ? morningTickets.length / tickets.length : 0,
-        afternoonRatio: tickets.length > 0 ? afternoonTickets.length / tickets.length : 0,
+        morningTickets,
+        afternoonTickets,
+        morningRatio: total > 0 ? morningTickets / total : 0,
+        afternoonRatio: total > 0 ? afternoonTickets / total : 0,
         hourlyDistribution,
-        topCallers,
-        topTags
+        topCallers: topCallersList, // Renvoyer une liste triée
+        topTags: topTagsList // Renvoyer une liste triée
     };
 }
 
@@ -600,85 +563,80 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
     }
 });
 
+// Helper pour sauvegarder les champs
+async function saveFields(fields) {
+    const promises = fields.map(field => {
+        if (field.value) {
+            return SavedField.findOrCreate({ where: { type: field.type, value: field.value } });
+        }
+        return Promise.resolve();
+    });
+    await Promise.all(promises);
+}
+
 // Fonction pour générer les statistiques
-async function processStats(tickets) {
+async function processStats(tickets, startDate, endDate) {
     console.log(`Traitement de ${tickets.length} tickets pour les statistiques`);
-    
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
-    
+
+    const timeZone = 'Europe/Paris';
+
+    // 1. Déterminer la plage de dates si non fournie
+    if (!startDate || !endDate) {
+        if (tickets.length === 0) {
+            startDate = new Date();
+            endDate = new Date();
+        } else {
+            const dates = tickets.map(t => t.createdAt);
+            startDate = new Date(Math.min(...dates));
+            endDate = new Date(Math.max(...dates));
+        }
+    }
+
+    const zonedStart = toZonedTime(startDate, timeZone);
+    const zonedEnd = toZonedTime(endDate, timeZone);
+
     const stats = {
-        day: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
-        week: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
-        month: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        day: { labels: [], data: [], glpiData: [], blockingData: [] },
+        week: { labels: [], data: [], glpiData: [], blockingData: [] },
+        month: { labels: [], data: [], glpiData: [], blockingData: [] },
         detailedData: [],
         topTags: [],
         topCallers: []
     };
 
-    // Préparer les structures pour les comptages
+    // 2. Initialiser les labels et les structures de comptage dynamiquement
     const dailyCounts = new Map();
-    const dailyGLPICounts = new Map();
-    const dailyBlockingCounts = new Map();
-    
-    const weekCounts = new Map();
-    const weekGLPICounts = new Map();
-    const weekBlockingCounts = new Map();
-    
-    const monthCounts = new Map();
-    const monthGLPICounts = new Map();
-    const monthBlockingCounts = new Map();
+    eachDayOfInterval({ start: zonedStart, end: zonedEnd }).forEach(day => {
+        const label = format(day, 'dd/MM/yyyy', { timeZone });
+        stats.day.labels.push(label);
+        dailyCounts.set(label, { total: 0, glpi: 0, blocking: 0 });
+    });
 
-    // Initialiser les derniers 30 jours
-    for (let i = 29; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        const dateStr = date.toLocaleDateString('fr-FR');
-        
-        dailyCounts.set(dateStr, 0);
-        dailyGLPICounts.set(dateStr, 0);
-        dailyBlockingCounts.set(dateStr, 0);
-        
-        stats.day.labels.push(dateStr);
-    }
+    const weeklyCounts = new Map();
+    eachWeekOfInterval({ start: zonedStart, end: zonedEnd }, { weekStartsOn: 1 }).forEach(week => {
+        const weekStart = startOfWeek(week, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(week, { weekStartsOn: 1 });
+        const label = `${format(weekStart, 'dd/MM/yyyy', { timeZone })} - ${format(weekEnd, 'dd/MM/yyyy', { timeZone })}`;
+        stats.week.labels.push(label);
+        weeklyCounts.set(format(weekStart, 'yyyy-MM-dd'), { label, total: 0, glpi: 0, blocking: 0 });
+    });
 
-    // Initialiser les 4 dernières semaines
-    const weekStart = new Date(now);
-    weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1);
-    weekStart.setHours(0, 0, 0, 0);
+    const monthlyCounts = new Map();
+    eachMonthOfInterval({ start: zonedStart, end: zonedEnd }).forEach(month => {
+        const monthStart = startOfMonth(month);
+        const label = format(monthStart, 'MMMM yyyy', { timeZone, locale: require('date-fns/locale/fr') });
+        stats.month.labels.push(label);
+        monthlyCounts.set(format(monthStart, 'yyyy-MM'), { label, total: 0, glpi: 0, blocking: 0 });
+    });
 
-    for (let i = 3; i >= 0; i--) {
-        const start = new Date(weekStart);
-        start.setDate(start.getDate() - (i * 7));
-        const end = new Date(start);
-        end.setDate(end.getDate() + 6);
-        
-        const weekLabel = `${start.toLocaleDateString('fr-FR')} - ${end.toLocaleDateString('fr-FR')}`;
-        stats.week.labels.push(weekLabel);
-        
-        weekCounts.set(weekLabel, 0);
-        weekGLPICounts.set(weekLabel, 0);
-        weekBlockingCounts.set(weekLabel, 0);
-    }
-
-    // Initialiser les 12 derniers mois
-    for (let i = 11; i >= 0; i--) {
-        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthLabel = monthStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-        stats.month.labels.push(monthLabel);
-        
-        monthCounts.set(monthLabel, 0);
-        monthGLPICounts.set(monthLabel, 0);
-        monthBlockingCounts.set(monthLabel, 0);
-    }
-
-    // Traiter chaque ticket
+    // 3. Traiter chaque ticket
     const tagStats = {};
     const callerStats = {};
 
     tickets.forEach(ticket => {
-        // Ajouter ce ticket aux données détaillées
+        const ticketDate = toZonedTime(ticket.createdAt, timeZone);
+
+        // Statistiques détaillées
         stats.detailedData.push({
             id: ticket.id,
             date: ticket.createdAt,
@@ -688,117 +646,73 @@ async function processStats(tickets) {
             isBlocking: ticket.isBlocking
         });
 
-        // Traitement pour les statistiques quotidiennes
-        const ticketDate = normalizeFrenchDate(ticket.createdAt);
-        const dateStr = ticketDate.toLocaleDateString('fr-FR');
-        
-        if (dailyCounts.has(dateStr)) {
-            dailyCounts.set(dateStr, dailyCounts.get(dateStr) + 1);
-            
-            if (ticket.isGLPI) {
-                dailyGLPICounts.set(dateStr, dailyGLPICounts.get(dateStr) + 1);
-            }
-            
-            if (ticket.isBlocking) {
-                dailyBlockingCounts.set(dateStr, dailyBlockingCounts.get(dateStr) + 1);
-            }
+        // Comptage quotidien
+        const dayLabel = format(ticketDate, 'dd/MM/yyyy', { timeZone });
+        if (dailyCounts.has(dayLabel)) {
+            dailyCounts.get(dayLabel).total++;
+            if (ticket.isGLPI) dailyCounts.get(dayLabel).glpi++;
+            if (ticket.isBlocking) dailyCounts.get(dayLabel).blocking++;
         }
 
-        // Traitement pour les statistiques hebdomadaires
-        for (const weekLabel of weekCounts.keys()) {
-            const [startStr, endStr] = weekLabel.split(' - ');
-            const weekStartDate = new Date(startStr.split('/').reverse().join('-'));
-            const weekEndDate = new Date(endStr.split('/').reverse().join('-'));
-            weekEndDate.setHours(23, 59, 59, 999);
-            
-            // Utiliser la date normalisée pour la comparaison
-            if (ticketDate >= weekStartDate && ticketDate <= weekEndDate) {
-                weekCounts.set(weekLabel, weekCounts.get(weekLabel) + 1);
-                
-                if (ticket.isGLPI) {
-                    weekGLPICounts.set(weekLabel, weekGLPICounts.get(weekLabel) + 1);
-                }
-                
-                if (ticket.isBlocking) {
-                    weekBlockingCounts.set(weekLabel, weekBlockingCounts.get(weekLabel) + 1);
-                }
-                
-                break; // Un ticket ne peut être que dans une seule semaine
-            }
+        // Comptage hebdomadaire
+        const weekKey = format(startOfWeek(ticketDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        if (weeklyCounts.has(weekKey)) {
+            weeklyCounts.get(weekKey).total++;
+            if (ticket.isGLPI) weeklyCounts.get(weekKey).glpi++;
+            if (ticket.isBlocking) weeklyCounts.get(weekKey).blocking++;
         }
 
-        // Traitement pour les statistiques mensuelles
-        for (const monthLabel of monthCounts.keys()) {
-            const [month, year] = monthLabel.split(' ');
-            const monthIndex = [
-                'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
-                'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
-            ].indexOf(month.toLowerCase());
-            
-            if (monthIndex !== -1) {
-                const monthStartDate = new Date(parseInt(year), monthIndex, 1);
-                const monthEndDate = new Date(parseInt(year), monthIndex + 1, 0);
-                monthEndDate.setHours(23, 59, 59, 999);
-                
-                // Utiliser la date normalisée pour la comparaison
-                if (ticketDate >= monthStartDate && ticketDate <= monthEndDate) {
-                    monthCounts.set(monthLabel, monthCounts.get(monthLabel) + 1);
-                    
-                    if (ticket.isGLPI) {
-                        monthGLPICounts.set(monthLabel, monthGLPICounts.get(monthLabel) + 1);
-                    }
-                    
-                    if (ticket.isBlocking) {
-                        monthBlockingCounts.set(monthLabel, monthBlockingCounts.get(monthLabel) + 1);
-                    }
-                    
-                    break; // Un ticket ne peut être que dans un seul mois
-                }
-            }
+        // Comptage mensuel
+        const monthKey = format(startOfMonth(ticketDate), 'yyyy-MM');
+        if (monthlyCounts.has(monthKey)) {
+            monthlyCounts.get(monthKey).total++;
+            if (ticket.isGLPI) monthlyCounts.get(monthKey).glpi++;
+            if (ticket.isBlocking) monthlyCounts.get(monthKey).blocking++;
         }
 
-        // Compter les tags
-        if (ticket.tags && Array.isArray(ticket.tags)) {
-            ticket.tags.forEach(tag => {
-                if (tag) {
-                    tagStats[tag] = (tagStats[tag] || 0) + 1;
-                }
-            });
-        }
-
-        // Compter les appelants
+        // Compter les tags et appelants
         if (ticket.caller) {
             callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
         }
+        if (ticket.tags && Array.isArray(ticket.tags)) {
+            ticket.tags.forEach(tag => {
+                if (tag) tagStats[tag] = (tagStats[tag] || 0) + 1;
+            });
+        }
     });
 
-    // Remplir les tableaux de données
-    stats.day.labels.forEach(dateStr => {
-        stats.day.data.push(dailyCounts.get(dateStr) || 0);
-        stats.day.glpiData.push(dailyGLPICounts.get(dateStr) || 0);
-        stats.day.blockingData.push(dailyBlockingCounts.get(dateStr) || 0);
+    // 4. Remplir les tableaux de données pour les graphiques
+    stats.day.labels.forEach(label => {
+        const counts = dailyCounts.get(label) || { total: 0, glpi: 0, blocking: 0 };
+        stats.day.data.push(counts.total);
+        stats.day.glpiData.push(counts.glpi);
+        stats.day.blockingData.push(counts.blocking);
     });
 
-    stats.week.labels.forEach(weekLabel => {
-        stats.week.data.push(weekCounts.get(weekLabel) || 0);
-        stats.week.glpiData.push(weekGLPICounts.get(weekLabel) || 0);
-        stats.week.blockingData.push(weekBlockingCounts.get(weekLabel) || 0);
+    const weekKeys = Array.from(weeklyCounts.keys());
+    weekKeys.forEach(key => {
+        const counts = weeklyCounts.get(key);
+        stats.week.data.push(counts.total);
+        stats.week.glpiData.push(counts.glpi);
+        stats.week.blockingData.push(counts.blocking);
     });
 
-    stats.month.labels.forEach(monthLabel => {
-        stats.month.data.push(monthCounts.get(monthLabel) || 0);
-        stats.month.glpiData.push(monthGLPICounts.get(monthLabel) || 0);
-        stats.month.blockingData.push(monthBlockingCounts.get(monthLabel) || 0);
+    const monthKeys = Array.from(monthlyCounts.keys());
+    monthKeys.forEach(key => {
+        const counts = monthlyCounts.get(key);
+        stats.month.data.push(counts.total);
+        stats.month.glpiData.push(counts.glpi);
+        stats.month.blockingData.push(counts.blocking);
     });
 
-    // Calculer les totaux
+
+    // 5. Calculer les totaux et les tops
     ['day', 'week', 'month'].forEach(period => {
         stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
         stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
         stats[period].blocking = stats[period].blockingData.reduce((a, b) => a + b, 0);
     });
 
-    // Calculer les top tags et appelants
     stats.topTags = Object.entries(tagStats)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
@@ -873,28 +787,6 @@ app.use((err, req, res, next) => {
 // Route pour afficher le formulaire de création de ticket personnalisé (accessible à tous)
 app.get('/admin/create-ticket', requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/create-ticket.html'));
-});
-
-// Route pour traiter la création du ticket personnalisé (accessible à tous)
-app.post('/admin/create-ticket', async (req, res) => {
-    try {
-        const { caller, reason, tags, status, isGLPI, createdAt, createdBy } = req.body;
-
-        const ticket = await Ticket.create({
-            caller,
-            reason: reason || '',
-            tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-            status: status || 'open',
-            isGLPI: isGLPI === 'true',
-            createdAt: createdAt ? new Date(createdAt) : new Date(),
-            createdBy: createdBy || 'Admin' // Utilise la valeur du formulaire ou une valeur par défaut
-        });
-
-        res.redirect('/'); // Redirigez l'utilisateur après la création
-    } catch (error) {
-        console.error('Erreur lors de la création du ticket:', error);
-        res.status(500).send('Erreur serveur');
-    }
 });
 
 // Démarrage du serveur

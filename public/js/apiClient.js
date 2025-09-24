@@ -130,11 +130,6 @@ async function createTicket(ticketData) {
             throw new Error('Erreur lors de la création du ticket');
         }
         
-        // Si le serveur a redirigé (soumission via formulaire), gérer la redirection
-        if (response.redirected) {
-            window.location.href = response.url;
-            return null;
-        }
         return await response.json();
     } catch (error) {
         console.error('Erreur:', error);
@@ -147,14 +142,15 @@ async function createTicket(ticketData) {
  * Met à jour un ticket existant
  * @param {string} ticketId - ID du ticket à mettre à jour
  * @param {Object} ticketData - Nouvelles données du ticket
- * @returns {Promise<boolean>} - Promesse résolue avec true si la mise à jour a réussi
+ * @returns {Promise<Object|null>} - Promesse résolue avec la réponse du serveur, ou null en cas d'erreur.
  */
 async function updateTicket(ticketId, ticketData) {
     try {
         const response = await fetch(`/api/tickets/${ticketId}/edit`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(ticketData)
         });
@@ -163,12 +159,11 @@ async function updateTicket(ticketId, ticketData) {
             throw new Error('Erreur lors de la mise à jour du ticket');
         }
         
-        // Le serveur renvoie une redirection, pas du JSON
-        return true;
+        return await response.json();
     } catch (error) {
         console.error('Erreur:', error);
         showNotification('Erreur lors de la mise à jour du ticket', 'error');
-        return false;
+        return null;
     }
 }
 
