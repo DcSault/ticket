@@ -1,71 +1,52 @@
-/**
- * Valide le formulaire de création de ticket.
- * @param {HTMLFormElement} form - Le formulaire à valider.
- * @returns {boolean} - True si le formulaire est valide, sinon false.
- */
-function validateCreationForm(form) {
-    let isValid = true;
-    
-    // Réinitialiser les erreurs précédentes
-    form.querySelectorAll('.error-message').forEach(el => el.remove());
-    form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
-
-    // Validation du champ 'caller'
-    const caller = form.elements['caller'];
-    if (!caller.value.trim()) {
-        isValid = false;
-        showError(caller, 'Le nom de l\'appelant est requis.');
-    }
-
-    // Validation du champ 'reason' si ce n'est pas un ticket GLPI
-    const isGLPI = form.elements['isGLPI'].checked;
-    if (!isGLPI) {
-        const reason = form.elements['reason'];
-        if (!reason.value.trim()) {
-            isValid = false;
-            showError(reason, 'La raison de l\'appel est requise.');
-        }
-    }
-
-    return isValid;
-}
-
-
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('createTicketForm');
-    if (!form) return;
-
-    // Initialiser la date et l'utilisateur
-    form.elements['createdAt'].value = new Date().toISOString().slice(0, 16);
-    fetchCurrentUser().then(user => {
-        if (user) {
-            form.elements['createdBy'].value = user.username;
-        }
-    });
-
-    // Gérer la soumission du formulaire avec AJAX
-    form.addEventListener('submit', async function(event) {
-        event.preventDefault();
-
-        if (validateCreationForm(form)) {
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-
-            // Assurer la conversion correcte des booléens et des tags
-            data.isGLPI = form.elements['isGLPI'].checked;
-            data.isBlocking = form.elements['isBlocking'] ? form.elements['isBlocking'].checked : false;
-            data.tags = data.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-
-            const result = await createTicket(data);
-
-            if (result) {
-                showNotification('Ticket créé avec succès !', 'success');
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1000);
-            } else {
-                // L'erreur est déjà notifiée par apiClient.js
+    // Initialiser la date actuelle
+    const now = new Date();
+    document.getElementById('createdAt').value = now.toISOString().slice(0, 16);
+    
+    // Récupérer l'utilisateur connecté
+    fetchCurrentUser()
+        .then(user => {
+            if (user) {
+                document.getElementById('createdBy').value = user.username;
             }
-        }
+        })
+        .catch(error => console.error('Erreur lors de la récupération de l\'utilisateur:', error));
+    
+    // Gérer la soumission du formulaire
+    document.getElementById('createTicketForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const formData = {
+            caller: document.getElementById('caller').value,
+            reason: document.getElementById('reason').value,
+            tags: document.getElementById('tags').value.split(',').map(tag => tag.trim()),
+            status: document.getElementById('status').value,
+            isGLPI: document.getElementById('isGLPI').checked,
+            createdAt: document.getElementById('createdAt').value,
+            createdBy: document.getElementById('createdBy').value
+        };
+        
+        // Soumission vers la route serveur existante
+        fetch('/admin/create-ticket', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Erreur lors de la création du ticket');
+            }
+            window.location.href = '/';
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la création du ticket: ' + error.message);
+        });
     });
-});
+}); 

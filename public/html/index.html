@@ -12,9 +12,9 @@
     <link href="/css/index.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
-    <main class="container mx-auto px-4 py-8">
+    <div class="container mx-auto px-4 py-8">
         <!-- Header -->
-        <header class="flex justify-between items-center mb-8">
+        <div class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">CallFix</h1>
             <div class="flex items-center gap-4">
                 <a href="/archives" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
@@ -43,10 +43,10 @@
                 </span>
                 <a href="/logout" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Déconnexion</a>
             </div>
-        </header>
+        </div>
         
         <!-- New Ticket Form -->
-        <section class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
             <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Nouvel Appel</h2>
             <form action="/api/tickets" method="POST" class="space-y-4">
                 <div class="flex items-center gap-4 mb-4">
@@ -157,17 +157,17 @@
                     Ajout rapide
                 </button>
             </form>
-        </section>
+        </div>
         
         <!-- Active Tickets -->
-        <section class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Appels Actifs</h2>
             
             <div id="ticketsContainer" class="space-y-4">
                 <!-- Les tickets actifs seront injectés ici par JavaScript -->
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 
     <!-- Modales pour les choix rapides -->
     <div id="quickReasonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -322,4 +322,4 @@
         }
     </script>
 </body>
-</html>
+</html> 

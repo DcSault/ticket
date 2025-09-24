@@ -57,49 +57,21 @@ function showError(input, message) {
 
 // Initialisation des événements
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('editTicketForm');
-    if (!form) return;
-
-    // Charger les données du ticket et remplir le formulaire
-    const ticketId = window.location.pathname.split('/')[2];
-    if (ticketId) {
-        fetchTicketDetails(ticketId).then(ticket => {
-            if (ticket) {
-                form.elements['caller'].value = ticket.caller || '';
-                form.elements['isGLPI'].checked = ticket.isGLPI;
-                form.elements['isBlocking'].checked = ticket.isBlocking;
-                form.elements['glpiNumber'].value = ticket.glpiNumber || '';
-                form.elements['reason'].value = ticket.reason || '';
-                form.elements['tags'].value = ticket.tags ? ticket.tags.join(', ') : '';
-                
-                // Gérer l'affichage des champs GLPI
-                toggleGLPIFields(form.elements['isGLPI']);
+    // Ajoute la classe form-input à tous les champs de saisie
+    const inputs = document.querySelectorAll('input[type="text"], textarea');
+    inputs.forEach(input => input.classList.add('form-input'));
+    
+    // Ajoute la classe btn aux boutons
+    const buttons = document.querySelectorAll('button, a.bg-gray-500, a.bg-blue-500');
+    buttons.forEach(button => button.classList.add('btn'));
+    
+    // Ajoute la validation au formulaire
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!validateForm()) {
+                e.preventDefault();
             }
         });
     }
-
-    // Gérer la soumission du formulaire avec AJAX
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault(); // Toujours empêcher la soumission par défaut
-
-        if (validateForm()) {
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-
-            // S'assurer que les booléens sont bien envoyés
-            data.isGLPI = form.elements['isGLPI'].checked;
-            data.isBlocking = form.elements['isBlocking'].checked;
-
-            const result = await updateTicket(ticketId, data);
-
-            if (result && result.success) {
-                showNotification('Ticket mis à jour avec succès !', 'success');
-                setTimeout(() => {
-                    window.location.href = '/'; // Rediriger après la mise à jour
-                }, 1000);
-            } else {
-                showNotification('Erreur lors de la mise à jour du ticket.', 'error');
-            }
-        }
-    });
-});
+}); 
