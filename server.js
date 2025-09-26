@@ -215,9 +215,11 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
 
         // Mise à jour de la date de création si spécifiée
         if (req.body.creationDate && req.body.creationTime) {
-            logger.debug('TICKET_EDIT', `Processing date/time update for ticket ${ticketId}`, {
+            logger.info('TICKET_EDIT', `Processing date/time update for ticket ${ticketId}`, {
                 creationDate: req.body.creationDate,
-                creationTime: req.body.creationTime
+                creationTime: req.body.creationTime,
+                hasCreationDate: !!req.body.creationDate,
+                hasCreationTime: !!req.body.creationTime
             });
             
             // Construire la date en tant que date locale pour éviter les problèmes de timezone
@@ -245,8 +247,16 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
                     year, month, day, hours, minutes
                 });
             }
+        } else {
+            logger.info('TICKET_EDIT', `No date/time update requested for ticket ${ticketId}`, {
+                hasCreationDate: !!req.body.creationDate,
+                hasCreationTime: !!req.body.creationTime,
+                creationDateValue: req.body.creationDate,
+                creationTimeValue: req.body.creationTime
+            });
         }
 
+        logger.info('TICKET_EDIT', `Proceeding with ticket update for ${ticketId}`);
         logger.ticketEditData(ticketId, originalData, updatedData);
 
         if (!updatedData.isGLPI) {
@@ -256,8 +266,18 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             ]);
         }
 
-        await ticket.update(updatedData);
+        logger.info('TICKET_EDIT', `Attempting to update ticket ${ticketId} in database`);
+        
+        try {
+            await ticket.update(updatedData);
+            logger.info('TICKET_EDIT', `Database update successful for ticket ${ticketId}`);
+        } catch (updateError) {
+            logger.error('TICKET_EDIT', `Database update failed for ticket ${ticketId}`, updateError);
+            throw updateError;
+        }
+        
         const updatedTicket = await ticket.reload();
+        logger.info('TICKET_EDIT', `Ticket ${ticketId} reloaded successfully`);
         
         logger.ticketEditSuccess(ticketId, updatedTicket.toJSON());
         return res.redirect('/');

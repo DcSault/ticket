@@ -84,10 +84,32 @@ class Logger {
     }
 
     ticketEditData(ticketId, originalData, newData) {
-        this.debug('TICKET_EDIT', `Data comparison for ticket ${ticketId}`, {
-            original: originalData,
-            new: newData
-        });
+        try {
+            this.debug('TICKET_EDIT', `Data comparison for ticket ${ticketId}`, {
+                original: this.sanitizeData(originalData),
+                new: this.sanitizeData(newData)
+            });
+        } catch (error) {
+            this.warn('TICKET_EDIT', `Failed to log data comparison for ticket ${ticketId}`, {
+                error: error.message
+            });
+        }
+    }
+
+    // Méthode utilitaire pour nettoyer les données avant logging
+    sanitizeData(data) {
+        try {
+            // Essayer de sérialiser/désérialiser pour nettoyer
+            return JSON.parse(JSON.stringify(data));
+        } catch (error) {
+            // Si ça échoue, retourner un objet simplifié
+            return {
+                type: typeof data,
+                constructor: data?.constructor?.name || 'Unknown',
+                keys: data && typeof data === 'object' ? Object.keys(data) : [],
+                error: 'Data serialization failed'
+            };
+        }
     }
 
     ticketEditSuccess(ticketId, updatedData) {
