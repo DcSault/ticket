@@ -235,16 +235,19 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
                 hasCreationTime: !!req.body.creationTime
             });
             
-            // Construire la date en tant que date locale pour éviter les problèmes de timezone
-            const [year, month, day] = req.body.creationDate.split('-').map(num => parseInt(num, 10));
-            const [hours, minutes] = req.body.creationTime.split(':').map(num => parseInt(num, 10));
+            // Construire la date comme on le fait dans la création
+            const dateTimeString = `${req.body.creationDate}T${req.body.creationTime}:00`;
+            const tempDate = new Date(dateTimeString);
             
-            // Créer la date en heure locale (pas UTC)
-            const newCreatedAt = new Date(year, month - 1, day, hours, minutes, 0);
+            // Ajuster pour traiter comme heure locale (même logique que la création)
+            const newCreatedAt = new Date(tempDate.getTime() - tempDate.getTimezoneOffset() * 60000);
             
             logger.debug('TICKET_EDIT', `Constructed date for ticket ${ticketId}`, {
                 originalDate: originalData.createdAt,
-                newDate: newCreatedAt,
+                dateTimeString: dateTimeString,
+                tempDate: tempDate.toISOString(),
+                timezoneOffset: tempDate.getTimezoneOffset(),
+                newDate: newCreatedAt.toISOString(),
                 isValid: !isNaN(newCreatedAt.getTime())
             });
             
