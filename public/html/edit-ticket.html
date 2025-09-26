@@ -239,10 +239,18 @@
                     creationTime: document.getElementById('creationTime').value
                 };
                 
+                console.log('=== DEBUG FRONTEND ===');
+                console.log('Form data to send:', formData);
+                console.log('Ticket ID:', ticketId);
+                
                 // Mettre à jour le ticket
                 const result = await updateTicket(ticketId, formData);
+                console.log('Update result:', result);
                 if (result) {
+                    console.log('Redirecting to home page');
                     window.location.href = '/';
+                } else {
+                    console.log('Update failed!');
                 }
             });
         });

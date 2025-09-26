@@ -184,11 +184,18 @@ app.get('/ticket/:id/edit', requireLogin, (req, res) => {
 
 app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
     try {
+        console.log('=== DEBUG EDIT TICKET ===');
+        console.log('Ticket ID:', req.params.id);
+        console.log('Body received:', req.body);
+        
         const ticket = await Ticket.findByPk(req.params.id);
         
         if (!ticket) {
+            console.log('Ticket not found!');
             return res.redirect('/');
         }
+        
+        console.log('Original ticket data:', ticket.toJSON());
 
         const updatedData = {
             caller: req.body.caller,
@@ -216,6 +223,8 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             }
         }
 
+        console.log('Updated data to apply:', updatedData);
+
         if (!updatedData.isGLPI) {
             await Promise.all([
                 SavedField.findOrCreate({ where: { type: 'caller', value: req.body.caller }}),
@@ -224,6 +233,9 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         }
 
         await ticket.update(updatedData);
+        console.log('Ticket updated successfully');
+        console.log('Updated ticket data:', (await ticket.reload()).toJSON());
+        console.log('=== END DEBUG ===');
         return res.redirect('/');
     } catch (error) {
         console.error('Erreur modification ticket:', error);

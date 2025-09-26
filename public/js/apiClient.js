@@ -151,6 +151,10 @@ async function createTicket(ticketData) {
  */
 async function updateTicket(ticketId, ticketData) {
     try {
+        console.log('=== DEBUG API CLIENT ===');
+        console.log('Sending update request to:', `/api/tickets/${ticketId}/edit`);
+        console.log('Data being sent:', ticketData);
+        
         const response = await fetch(`/api/tickets/${ticketId}/edit`, {
             method: 'POST',
             headers: {
@@ -159,11 +163,17 @@ async function updateTicket(ticketId, ticketData) {
             body: JSON.stringify(ticketData)
         });
         
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
         if (!response.ok) {
+            const errorText = await response.text();
+            console.log('Error response:', errorText);
             throw new Error('Erreur lors de la mise à jour du ticket');
         }
         
         // Le serveur renvoie une redirection, pas du JSON
+        console.log('Update successful');
         return true;
     } catch (error) {
         console.error('Erreur:', error);
