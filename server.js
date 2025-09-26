@@ -147,6 +147,14 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
     try {
         const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
         
+        // Log des informations de création
+        const now = new Date();
+        logger.info('TICKET_CREATE', 'Creating ticket with automatic timestamp', {
+            systemTime: now.toISOString(),
+            systemLocalTime: now.toString(),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        });
+        
         const ticket = await Ticket.create({
             caller: req.body.caller,
             reason: req.body.reason || '',
@@ -156,6 +164,11 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
             isBlocking: req.body.isBlocking === 'true',
             glpiNumber: req.body.isGLPI === 'true' ? (req.body.glpiNumber || null) : null,
             createdBy: req.session.username
+        });
+
+        logger.success('TICKET_CREATE', `Normal ticket created: ${ticket.id}`, {
+            createdAt: ticket.createdAt.toISOString(),
+            displayTime: ticket.createdAt.toString()
         });
 
         if (!ticket.isGLPI) {
