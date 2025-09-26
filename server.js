@@ -14,6 +14,9 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const { Op } = require('sequelize');
 
+// Import du logger persistant
+const logger = require('./utils/logger');
+
 
 // Import des modèles
 const { sequelize, User, Ticket, Message, SavedField } = require('./models');
@@ -183,19 +186,21 @@ app.get('/ticket/:id/edit', requireLogin, (req, res) => {
 });
 
 app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
+    const ticketId = req.params.id;
+    const userId = req.session.username;
+    
     try {
-        console.log('=== DEBUG EDIT TICKET ===');
-        console.log('Ticket ID:', req.params.id);
-        console.log('Body received:', req.body);
+        logger.ticketEditStart(ticketId, userId, req.body);
         
-        const ticket = await Ticket.findByPk(req.params.id);
+        const ticket = await Ticket.findByPk(ticketId);
         
         if (!ticket) {
-            console.log('Ticket not found!');
+            logger.warn('TICKET_EDIT', `Ticket ${ticketId} not found`);
             return res.redirect('/');
         }
         
-        console.log('Original ticket data:', ticket.toJSON());
+        const originalData = ticket.toJSON();
+        logger.debug('TICKET_EDIT', `Original ticket data for ${ticketId}`, originalData);
 
         const updatedData = {
             caller: req.body.caller,
@@ -210,6 +215,11 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
 
         // Mise à jour de la date de création si spécifiée
         if (req.body.creationDate && req.body.creationTime) {
+            logger.debug('TICKET_EDIT', `Processing date/time update for ticket ${ticketId}`, {
+                creationDate: req.body.creationDate,
+                creationTime: req.body.creationTime
+            });
+            
             // Construire la date en tant que date locale pour éviter les problèmes de timezone
             const [year, month, day] = req.body.creationDate.split('-').map(num => parseInt(num, 10));
             const [hours, minutes] = req.body.creationTime.split(':').map(num => parseInt(num, 10));
@@ -217,13 +227,27 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             // Créer la date en heure locale (pas UTC)
             const newCreatedAt = new Date(year, month - 1, day, hours, minutes, 0);
             
+            logger.debug('TICKET_EDIT', `Constructed date for ticket ${ticketId}`, {
+                originalDate: originalData.createdAt,
+                newDate: newCreatedAt,
+                isValid: !isNaN(newCreatedAt.getTime())
+            });
+            
             // Vérifier que la date est valide
             if (!isNaN(newCreatedAt.getTime())) {
                 updatedData.createdAt = newCreatedAt;
+                logger.info('TICKET_EDIT', `Date updated for ticket ${ticketId}`, {
+                    from: originalData.createdAt,
+                    to: newCreatedAt
+                });
+            } else {
+                logger.warn('TICKET_EDIT', `Invalid date constructed for ticket ${ticketId}`, {
+                    year, month, day, hours, minutes
+                });
             }
         }
 
-        console.log('Updated data to apply:', updatedData);
+        logger.ticketEditData(ticketId, originalData, updatedData);
 
         if (!updatedData.isGLPI) {
             await Promise.all([
@@ -233,12 +257,12 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         }
 
         await ticket.update(updatedData);
-        console.log('Ticket updated successfully');
-        console.log('Updated ticket data:', (await ticket.reload()).toJSON());
-        console.log('=== END DEBUG ===');
+        const updatedTicket = await ticket.reload();
+        
+        logger.ticketEditSuccess(ticketId, updatedTicket.toJSON());
         return res.redirect('/');
     } catch (error) {
-        console.error('Erreur modification ticket:', error);
+        logger.ticketEditError(ticketId, error);
         res.status(500).send('Erreur lors de la modification du ticket');
     }
 });
@@ -934,12 +958,17 @@ async function startServer() {
         const VERSION = '2.0.6';
         console.log(`🚀 Version du serveur : ${VERSION}`);
         // Lancer un archivage initial au démarrage
-        archiveOldTickets().catch(err => console.error('Archivage initial échoué:', err));
+        archiveOldTickets().catch(err => logger.error('STARTUP', 'Archivage initial échoué', err));
+        
         app.listen(process.env.PORT, () => {
-            console.log(`✨ Serveur démarré sur http://localhost:${process.env.PORT}`);
+            logger.success('STARTUP', `Serveur démarré sur http://localhost:${process.env.PORT}`);
+            logger.info('STARTUP', 'Système de logging persistant activé', {
+                logsDirectory: './logs/',
+                categories: ['STARTUP', 'TICKET_EDIT', 'API', 'ERROR']
+            });
         });
     } catch (error) {
-        console.error('❌ Erreur de démarrage:', error);
+        logger.error('STARTUP', 'Erreur de démarrage', error);
         process.exit(1);
     }
 }

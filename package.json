@@ -19,7 +19,11 @@
     },
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node server.js"
+        "start": "node server.js",
+        "logs": "node scripts/view-logs.js",
+        "logs:ticket": "node scripts/view-logs.js ticket",
+        "logs:error": "node scripts/view-logs.js error",
+        "logs:all": "node scripts/view-logs.js all"
     },
     "keywords": [],
     "author": "",
