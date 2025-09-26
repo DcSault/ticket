@@ -14,13 +14,6 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const { Op } = require('sequelize');
 
-// Import du logger persistant
-const logger = require('./utils/logger');
-
-// Import du système de timezone français
-const frenchTZ = require('./utils/frenchTimezone');
-
-
 // Import des modèles
 const { sequelize, User, Ticket, Message, SavedField } = require('./models');
 
@@ -150,16 +143,6 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
     try {
         const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
         
-        // Log des informations de création
-        const now = frenchTZ.now();
-        const tzInfo = frenchTZ.getTimezoneInfo(now);
-        
-        logger.info('TICKET_CREATE', 'Creating ticket with French timezone', {
-            systemTime: new Date().toISOString(),
-            frenchTime: frenchTZ.format(new Date()),
-            timezoneInfo: tzInfo
-        });
-        
         const ticket = await Ticket.create({
             caller: req.body.caller,
             reason: req.body.reason || '',
@@ -171,10 +154,7 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
             createdBy: req.session.username
         });
 
-        logger.success('TICKET_CREATE', `Normal ticket created: ${ticket.id}`, {
-            createdAt: ticket.createdAt.toISOString(),
-            displayTime: ticket.createdAt.toString()
-        });
+        logger.success('TICKET_CREATE', `Normal ticket created: ${ticket.id}`);
 
         if (!ticket.isGLPI) {
             await Promise.all([
@@ -205,20 +185,15 @@ app.get('/ticket/:id/edit', requireLogin, (req, res) => {
 
 app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
     const ticketId = req.params.id;
-    const userId = req.session.username;
     
     try {
-        logger.ticketEditStart(ticketId, userId, req.body);
-        
         const ticket = await Ticket.findByPk(ticketId);
         
         if (!ticket) {
-            logger.warn('TICKET_EDIT', `Ticket ${ticketId} not found`);
             return res.redirect('/');
         }
         
         const originalData = ticket.toJSON();
-        logger.debug('TICKET_EDIT', `Original ticket data for ${ticketId}`, originalData);
 
         const updatedData = {
             caller: req.body.caller,
@@ -233,48 +208,15 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
 
         // Mise à jour de la date de création si spécifiée
         if (req.body.creationDate && req.body.creationTime) {
-            logger.info('TICKET_EDIT', `Processing date/time update for ticket ${ticketId}`, {
-                creationDate: req.body.creationDate,
-                creationTime: req.body.creationTime
-            });
-            
             // Créer la date directement avec les valeurs du client
-            // Le client s'occupe de son timezone local
             const dateTimeString = `${req.body.creationDate}T${req.body.creationTime}:00`;
             const newCreatedAt = new Date(dateTimeString);
-            
-            logger.debug('TICKET_EDIT', `Date created from client timezone for ticket ${ticketId}`, {
-                originalDate: originalData.createdAt,
-                inputDate: req.body.creationDate,
-                inputTime: req.body.creationTime,
-                dateTimeString: dateTimeString,
-                newDate: newCreatedAt.toISOString(),
-                isValid: !isNaN(newCreatedAt.getTime())
-            });
             
             // Vérifier que la date est valide
             if (!isNaN(newCreatedAt.getTime())) {
                 updatedData.createdAt = newCreatedAt;
-                logger.info('TICKET_EDIT', `Date updated for ticket ${ticketId}`, {
-                    from: originalData.createdAt,
-                    to: newCreatedAt
-                });
-            } else {
-                logger.warn('TICKET_EDIT', `Invalid date constructed for ticket ${ticketId}`, {
-                    year, month, day, hours, minutes
-                });
             }
-        } else {
-            logger.info('TICKET_EDIT', `No date/time update requested for ticket ${ticketId}`, {
-                hasCreationDate: !!req.body.creationDate,
-                hasCreationTime: !!req.body.creationTime,
-                creationDateValue: req.body.creationDate,
-                creationTimeValue: req.body.creationTime
-            });
         }
-
-        logger.info('TICKET_EDIT', `Proceeding with ticket update for ${ticketId}`);
-        logger.ticketEditData(ticketId, originalData, updatedData);
 
         if (!updatedData.isGLPI) {
             await Promise.all([
@@ -283,51 +225,27 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
             ]);
         }
 
-        logger.info('TICKET_EDIT', `Attempting to update ticket ${ticketId} in database`);
-        
-        try {
+        // Mise à jour du ticket
+        if (updatedData.createdAt) {
             // Si on doit modifier createdAt, on utilise une requête directe
-            if (updatedData.createdAt) {
-                logger.info('TICKET_EDIT', `Updating createdAt field with direct query for ticket ${ticketId}`);
-                
-                // Séparer createdAt des autres données
-                const { createdAt, ...otherData } = updatedData;
-                
-                // Mettre à jour les autres champs normalement
-                await ticket.update(otherData);
-                
-                // Puis mettre à jour createdAt avec une requête SQL directe
-                await sequelize.query(
-                    'UPDATE tickets SET "createdAt" = :createdAt WHERE id = :ticketId',
-                    {
-                        replacements: { 
-                            createdAt: createdAt.toISOString(), 
-                            ticketId: ticketId 
-                        }
+            const { createdAt, ...otherData } = updatedData;
+            await ticket.update(otherData);
+            await sequelize.query(
+                'UPDATE tickets SET "createdAt" = :createdAt WHERE id = :ticketId',
+                {
+                    replacements: { 
+                        createdAt: createdAt.toISOString(), 
+                        ticketId: ticketId 
                     }
-                );
-                
-                logger.info('TICKET_EDIT', `CreatedAt updated successfully for ticket ${ticketId}`, {
-                    newCreatedAt: createdAt.toISOString()
-                });
-            } else {
-                // Mise à jour normale sans createdAt
-                await ticket.update(updatedData);
-            }
-            
-            logger.info('TICKET_EDIT', `Database update successful for ticket ${ticketId}`);
-        } catch (updateError) {
-            logger.error('TICKET_EDIT', `Database update failed for ticket ${ticketId}`, updateError);
-            throw updateError;
+                }
+            );
+        } else {
+            await ticket.update(updatedData);
         }
         
-        const updatedTicket = await ticket.reload();
-        logger.info('TICKET_EDIT', `Ticket ${ticketId} reloaded successfully`);
-        
-        logger.ticketEditSuccess(ticketId, updatedTicket.toJSON());
         return res.redirect('/');
     } catch (error) {
-        logger.ticketEditError(ticketId, error);
+        console.error('Erreur modification ticket:', error);
         res.status(500).send('Erreur lors de la modification du ticket');
     }
 });
@@ -987,19 +905,10 @@ app.post('/admin/create-ticket', async (req, res) => {
         
         let finalCreatedAt;
         if (createdAt) {
-            // Utiliser directement la date du client
             finalCreatedAt = new Date(createdAt);
         } else {
             finalCreatedAt = new Date();
         }
-        
-        logger.info('TICKET_CREATE', 'Creating new ticket', {
-            caller,
-            reason,
-            createdBy,
-            originalCreatedAt: createdAt,
-            finalCreatedAt: finalCreatedAt.toISOString()
-        });
 
         const ticket = await Ticket.create({
             caller,
@@ -1008,13 +917,12 @@ app.post('/admin/create-ticket', async (req, res) => {
             status: status || 'open',
             isGLPI: isGLPI === 'true',
             createdAt: finalCreatedAt,
-            createdBy: createdBy || 'Admin' // Utilise la valeur du formulaire ou une valeur par défaut
+            createdBy: createdBy || 'Admin'
         });
 
-        logger.success('TICKET_CREATE', `Ticket created successfully: ${ticket.id}`);
-        res.redirect('/'); // Redirigez l'utilisateur après la création
+        res.redirect('/');
     } catch (error) {
-        logger.error('TICKET_CREATE', 'Failed to create ticket', error);
+        console.error('Erreur lors de la création du ticket:', error);
         res.status(500).send('Erreur serveur');
     }
 });
@@ -1040,27 +948,13 @@ async function startServer() {
         const VERSION = '2.0.6';
         console.log(`🚀 Version du serveur : ${VERSION}`);
         // Lancer un archivage initial au démarrage
-        archiveOldTickets().catch(err => logger.error('STARTUP', 'Archivage initial échoué', err));
+        archiveOldTickets().catch(err => console.error('Archivage initial échoué:', err));
         
         app.listen(process.env.PORT, () => {
-            const tzInfo = frenchTZ.getTimezoneInfo();
-            const now = frenchTZ.now();
-            
-            logger.success('STARTUP', `Serveur démarré sur http://localhost:${process.env.PORT}`);
-            logger.info('STARTUP', 'Système de timezone français activé', {
-                timezone: tzInfo.timeZone,
-                season: tzInfo.season,
-                offset: tzInfo.offsetString,
-                currentTime: frenchTZ.format(now),
-                isDST: tzInfo.isDST
-            });
-            logger.info('STARTUP', 'Système de logging persistant activé', {
-                logsDirectory: './logs/',
-                categories: ['STARTUP', 'TICKET_EDIT', 'TICKET_CREATE', 'API', 'ERROR']
-            });
+            console.log(`✨ Serveur démarré sur http://localhost:${process.env.PORT}`);
         });
     } catch (error) {
-        logger.error('STARTUP', 'Erreur de démarrage', error);
+        console.error('❌ Erreur de démarrage:', error);
         process.exit(1);
     }
 }

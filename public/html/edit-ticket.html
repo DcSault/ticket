@@ -134,7 +134,6 @@
 
     <!-- Scripts communs -->
     <script src="/js/common.js"></script>
-    <script src="/js/frenchTimezone.js"></script>
     <script src="/js/ticketFunctions.js"></script>
     <script src="/js/formFunctions.js"></script>
     <script src="/js/apiClient.js"></script>
@@ -200,15 +199,21 @@
                     document.getElementById('glpiNumber').value = ticket.glpiNumber;
                 }
                 
-                // Remplir les champs de date et heure de création avec le timezone français
-                const components = extractFrenchComponents(ticket.createdAt);
+                // Remplir les champs de date et heure de création - MÊME SYSTÈME QUE LA CRÉATION
+                const creationDate = new Date(ticket.createdAt);
+                const year = creationDate.getFullYear();
+                const month = String(creationDate.getMonth() + 1).padStart(2, '0');
+                const day = String(creationDate.getDate()).padStart(2, '0');
+                const hours = String(creationDate.getHours()).padStart(2, '0');
+                const minutes = String(creationDate.getMinutes()).padStart(2, '0');
                 
-                document.getElementById('creationDate').value = components.formattedDate;
-                document.getElementById('creationTime').value = components.formattedTime;
+                document.getElementById('creationDate').value = `${year}-${month}-${day}`;
+                document.getElementById('creationTime').value = `${hours}:${minutes}`;
                 
-                // Afficher les informations de timezone pour debug
-                const tzInfo = getFrenchTimezoneInfo();
-                console.log('Timezone français actuel:', tzInfo);
+                console.log('Date extraction pour édition:', {
+                    original: ticket.createdAt,
+                    extracted: `${year}-${month}-${day} ${hours}:${minutes}`
+                });
                 
                 // Afficher/masquer les champs GLPI
                 toggleGLPIFields(document.getElementById('isGLPI'));
