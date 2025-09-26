@@ -269,7 +269,35 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         logger.info('TICKET_EDIT', `Attempting to update ticket ${ticketId} in database`);
         
         try {
-            await ticket.update(updatedData);
+            // Si on doit modifier createdAt, on utilise une requête directe
+            if (updatedData.createdAt) {
+                logger.info('TICKET_EDIT', `Updating createdAt field with direct query for ticket ${ticketId}`);
+                
+                // Séparer createdAt des autres données
+                const { createdAt, ...otherData } = updatedData;
+                
+                // Mettre à jour les autres champs normalement
+                await ticket.update(otherData);
+                
+                // Puis mettre à jour createdAt avec une requête SQL directe
+                await sequelize.query(
+                    'UPDATE tickets SET "createdAt" = :createdAt WHERE id = :ticketId',
+                    {
+                        replacements: { 
+                            createdAt: createdAt.toISOString(), 
+                            ticketId: ticketId 
+                        }
+                    }
+                );
+                
+                logger.info('TICKET_EDIT', `CreatedAt updated successfully for ticket ${ticketId}`, {
+                    newCreatedAt: createdAt.toISOString()
+                });
+            } else {
+                // Mise à jour normale sans createdAt
+                await ticket.update(updatedData);
+            }
+            
             logger.info('TICKET_EDIT', `Database update successful for ticket ${ticketId}`);
         } catch (updateError) {
             logger.error('TICKET_EDIT', `Database update failed for ticket ${ticketId}`, updateError);
