@@ -5,15 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/common.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
-        const theme = localStorage.getItem('color-theme');
-        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        (function(){
+            try {
+                const saved = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const isDark = saved ? saved === 'dark' : prefersDark;
+                document.documentElement.classList.toggle('dark', isDark);
+            } catch(e) {}
+        })();
     </script>
 
     <style>
@@ -32,15 +35,34 @@
     </div>
 
     <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
+        <!-- Header (aligné sur index.html) -->
         <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Rapport Journalier</h1>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">CallFix</h1>
             <div class="flex items-center gap-4">
-                <a href="/" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                    &larr; Retour
+                <a href="/" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Accueil
+                </a>
+                <a href="/stats" class="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Statistiques
+                </a>
+                <a href="/report" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Rapport
                 </a>
             </div>
         </div>
+
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">Vue d'ensemble</h2>
 
         <!-- Summary Cards -->
         <div class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
@@ -95,7 +117,7 @@
 
         <!-- Date Filters -->
         <div class="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
                 <div>
                     <label class="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Date de début</label>
                     <input type="date" id="startDate" 
@@ -107,6 +129,12 @@
                     <input type="date" id="endDate" 
                            class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
                            onchange="filterDataByDate()">
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="setTodayRange()" class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100">Aujourd'hui</button>
+                    <button onclick="setLastNDays(7)" class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100">7 jours</button>
+                    <button onclick="setLastNDays(30)" class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100">30 jours</button>
+                    <button onclick="setFullRange()" class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Tout</button>
                 </div>
             </div>
         </div>
@@ -168,25 +196,27 @@
         </div>
     </div>
 
-    <script>
-        window.initialStats = <%- JSON.stringify(stats) %>;
-    </script>
-    <script src="/js/stats.js"></script>
+    <!-- Scripts communs -->
+    <script src="/js/common.js"></script>
+    <script src="/js/apiClient.js"></script>
     <script src="/js/themeManager.js"></script>
     <script src="/js/version.js"></script>
+    
+    <!-- Script spécifique à la page -->
+    <script src="/js/stats.js"></script>
     
     <!-- Footer avec informations de version -->
     <footer class="mt-8 py-4 border-t border-gray-200 dark:border-gray-700">
         <div class="container mx-auto px-4">
             <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-600 dark:text-gray-400">
                 <div>
-                    <span>Version <span class="app-version">2.0.0</span></span>
+                    <span>Version <span class="app-version"></span></span>
                 </div>
                 <div>
-                    <span>Développé par <span class="app-developer">Sault</span></span>
+                    <span>Développé par <span class="app-developer"></span></span>
                 </div>
                 <div>
-                    <a href="https://github.com/DcSault" class="app-github-link hover:text-blue-500 dark:hover:text-blue-400" target="_blank">
+                    <a href="#" class="app-github-link hover:text-blue-500 dark:hover:text-blue-400" target="_blank">
                         GitHub
                     </a>
                 </div>
@@ -194,4 +224,4 @@
         </div>
     </footer>
 </body>
-</html>
+</html> 

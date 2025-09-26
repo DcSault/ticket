@@ -1,0 +1,233 @@
+/**
+ * Couleurs adaptées pour le mode sombre
+ * Remplace les couleurs rouge-vif par des variantes plus douces
+ */
+
+:root {
+    /* Couleurs primaires adaptatives */
+    --primary-red: #ef4444;
+    --primary-red-hover: #dc2626;
+    --primary-red-light: #fca5a5;
+    --danger-color: #f87171;
+    --error-color: #fca5a5;
+    
+    /* Couleurs d'état */
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --info-color: #3b82f6;
+    
+    /* Couleurs de texte adaptatives */
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+}
+
+[data-theme="dark"] {
+    /* Couleurs rouge adaptées pour mode sombre */
+    --primary-red: #f87171;
+    --primary-red-hover: #fca5a5;
+    --primary-red-light: #ef4444;
+    --danger-color: #fca5a5;
+    --error-color: #fed7d7;
+    
+    /* Couleurs d'état pour mode sombre */
+    --success-color: #34d399;
+    --warning-color: #fbbf24;
+    --info-color: #60a5fa;
+    
+    /* Couleurs de texte pour mode sombre */
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+}
+
+/* Application des nouvelles couleurs */
+
+/* Boutons de danger */
+.bg-red-500,
+.bg-red-600 {
+    background-color: var(--primary-red) !important;
+}
+
+.hover\\:bg-red-600:hover,
+.hover\\:bg-red-700:hover {
+    background-color: var(--primary-red-hover) !important;
+}
+
+/* Texte rouge */
+.text-red-500,
+.text-red-600,
+.text-red-700 {
+    color: var(--primary-red) !important;
+}
+
+/* Bordures rouges */
+.border-red-500,
+.border-red-600 {
+    border-color: var(--primary-red) !important;
+}
+
+/* Messages d'erreur */
+.error-message,
+.alert-error {
+    color: var(--error-color) !important;
+    background-color: rgba(248, 113, 113, 0.1) !important;
+    border-color: var(--error-color) !important;
+}
+
+[data-theme="dark"] .error-message,
+[data-theme="dark"] .alert-error {
+    background-color: rgba(248, 113, 113, 0.05) !important;
+}
+
+/* Messages de succès */
+.success-message,
+.alert-success {
+    color: var(--success-color) !important;
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    border-color: var(--success-color) !important;
+}
+
+[data-theme="dark"] .success-message,
+[data-theme="dark"] .alert-success {
+    background-color: rgba(52, 211, 153, 0.05) !important;
+}
+
+/* Messages d'avertissement */
+.warning-message,
+.alert-warning {
+    color: var(--warning-color) !important;
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    border-color: var(--warning-color) !important;
+}
+
+[data-theme="dark"] .warning-message,
+[data-theme="dark"] .alert-warning {
+    background-color: rgba(251, 191, 36, 0.05) !important;
+}
+
+/* Messages d'information */
+.info-message,
+.alert-info {
+    color: var(--info-color) !important;
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    border-color: var(--info-color) !important;
+}
+
+[data-theme="dark"] .info-message,
+[data-theme="dark"] .alert-info {
+    background-color: rgba(96, 165, 250, 0.05) !important;
+}
+
+/* Badges et étiquettes */
+.badge-danger,
+.badge-error {
+    background-color: var(--danger-color) !important;
+    color: white !important;
+}
+
+.badge-success {
+    background-color: var(--success-color) !important;
+    color: white !important;
+}
+
+.badge-warning {
+    background-color: var(--warning-color) !important;
+    color: white !important;
+}
+
+.badge-info {
+    background-color: var(--info-color) !important;
+    color: white !important;
+}
+
+/* Boutons personnalisés */
+.btn-danger {
+    background-color: var(--primary-red) !important;
+    border-color: var(--primary-red) !important;
+    color: white !important;
+}
+
+.btn-danger:hover {
+    background-color: var(--primary-red-hover) !important;
+    border-color: var(--primary-red-hover) !important;
+}
+
+.btn-outline-danger {
+    color: var(--primary-red) !important;
+    border-color: var(--primary-red) !important;
+    background-color: transparent !important;
+}
+
+.btn-outline-danger:hover {
+    background-color: var(--primary-red) !important;
+    border-color: var(--primary-red) !important;
+    color: white !important;
+}
+
+/* Focus rings adaptés */
+.focus\\:ring-red-500:focus {
+    --tw-ring-color: var(--primary-red) !important;
+}
+
+.focus\\:border-red-500:focus {
+    border-color: var(--primary-red) !important;
+}
+
+/* Liens de danger */
+a.text-red-600,
+a.text-red-500 {
+    color: var(--primary-red) !important;
+}
+
+a.text-red-600:hover,
+a.text-red-500:hover {
+    color: var(--primary-red-hover) !important;
+}
+
+/* États spéciaux */
+.invalid,
+.is-invalid {
+    border-color: var(--error-color) !important;
+}
+
+.valid,
+.is-valid {
+    border-color: var(--success-color) !important;
+}
+
+/* Indicateurs de statut */
+.status-error {
+    background-color: var(--danger-color) !important;
+}
+
+.status-success {
+    background-color: var(--success-color) !important;
+}
+
+.status-warning {
+    background-color: var(--warning-color) !important;
+}
+
+.status-info {
+    background-color: var(--info-color) !important;
+}
+
+/* Surcharge des classes Tailwind spécifiques */
+[data-theme="dark"] .text-red-500,
+[data-theme="dark"] .text-red-600,
+[data-theme="dark"] .text-red-700 {
+    color: #fca5a5 !important; /* Rouge plus doux en mode sombre */
+}
+
+[data-theme="dark"] .bg-red-50 {
+    background-color: rgba(248, 113, 113, 0.05) !important;
+}
+
+[data-theme="dark"] .bg-red-100 {
+    background-color: rgba(248, 113, 113, 0.1) !important;
+}
+
+[data-theme="dark"] .border-red-300 {
+    border-color: rgba(248, 113, 113, 0.3) !important;
+}

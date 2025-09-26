@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html class="dark:bg-gray-900">
+<head>
+    <title>Test du Système de Thème Moderne</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Initialisation du thème AVANT tout le reste pour éviter le flash -->
+    <script src="/js/theme-init.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/common.css" rel="stylesheet">
+    <link href="/css/theme-override.css" rel="stylesheet">
+    <link href="/css/ultra-smooth-theme-button.css" rel="stylesheet">
+    
+    <style>
+        /* Styles spécifiques pour la demo */
+        .demo-card {
+            padding: 2rem;
+            margin: 1rem;
+            border-radius: var(--border-radius);
+            background-color: var(--surface) !important;
+            border: 1px solid var(--border-primary);
+            color: var(--text-primary) !important;
+            box-shadow: var(--shadow);
+            transition: all var(--transition-normal);
+        }
+        
+        .demo-button {
+            padding: 0.5rem 1rem;
+            margin: 0.5rem;
+            border-radius: var(--border-radius);
+            background-color: var(--primary) !important;
+            color: white !important;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .demo-button:hover {
+            background-color: var(--primary-hover) !important;
+            transform: translateY(-2px);
+        }
+        
+        /* Override pour éliminer tout blanc résiduel */
+        .demo-grid-item {
+            background-color: var(--surface-muted) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-primary) !important;
+        }
+    </style>
+</head>
+<body class="theme-transition theme-forced" style="background-color: var(--bg-primary) !important; color: var(--text-primary) !important;">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center theme-transition" style="color: var(--text-primary) !important">
+            🎨 Test du Système de Thème Moderne
+        </h1>
+        
+        <div class="demo-card">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary) !important">Contrôles de Thème</h2>
+            <div class="flex flex-wrap gap-4">
+                <button onclick="window.themeManager?.setTheme('light')" class="demo-button">
+                    ☀️ Mode Clair
+                </button>
+                <button onclick="window.themeManager?.setTheme('dark')" class="demo-button">
+                    🌙 Mode Sombre
+                </button>
+                <button onclick="window.themeManager?.toggleTheme()" class="demo-button">
+                    🔄 Basculer
+                </button>
+            </div>
+        </div>
+        
+        <div class="demo-card">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary) !important">Variables CSS Dynamiques</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="demo-grid-item" style="padding: 1rem; border-radius: var(--border-radius);">
+                    <strong>Arrière-plan principal</strong><br>
+                    <small>--bg-primary</small>
+                </div>
+                <div class="demo-grid-item" style="padding: 1rem; border-radius: var(--border-radius);">
+                    <strong>Surface</strong><br>
+                    <small>--surface</small>
+                </div>
+                <div style="background-color: var(--primary) !important; color: white !important; padding: 1rem; border-radius: var(--border-radius);">
+                    <strong>Primaire</strong><br>
+                    <small>--primary</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-card">
+            <h2 class="text-xl font-semibold mb-4">Composants Interactifs</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary)">Champ de saisie</label>
+                    <input type="text" class="form-input w-full p-2 border rounded" placeholder="Testez la saisie...">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary)">Sélection</label>
+                    <select class="form-input w-full p-2 border rounded">
+                        <option>Option 1</option>
+                        <option>Option 2</option>
+                        <option>Option 3</option>
+                    </select>
+                </div>
+                
+                <div class="flex flex-wrap gap-2">
+                    <span class="tag px-2 py-1 rounded text-sm">Tag 1</span>
+                    <span class="tag px-2 py-1 rounded text-sm">Tag 2</span>
+                    <span class="tag px-2 py-1 rounded text-sm">Tag 3</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-card">
+            <h2 class="text-xl font-semibold mb-4">État du Thème</h2>
+            <div id="theme-status" style="background-color: var(--surface-muted); padding: 1rem; border-radius: var(--border-radius); font-family: monospace;">
+                Chargement...
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/common.js"></script>
+    <script src="/js/themeManager.js"></script>
+    
+    <script>
+        function updateThemeStatus() {
+            const status = document.getElementById('theme-status');
+            if (!status) return;
+            
+            const theme = window.themeManager?.getTheme() || 'unknown';
+            const dataTheme = document.documentElement.getAttribute('data-theme');
+            const darkClass = document.documentElement.classList.contains('dark');
+            const localStorageTheme = localStorage.getItem('theme');
+            
+            status.innerHTML = `
+                <strong>Thème actuel:</strong> ${theme}<br>
+                <strong>Attribut data-theme:</strong> ${dataTheme || 'non défini'}<br>
+                <strong>Classe .dark:</strong> ${darkClass ? 'présente' : 'absente'}<br>
+                <strong>localStorage:</strong> ${localStorageTheme || 'non défini'}<br>
+                <strong>Préférence système:</strong> ${window.matchMedia('(prefers-color-scheme: dark)').matches ? 'sombre' : 'clair'}<br>
+                <strong>Theme Manager:</strong> ${window.themeManager ? 'initialisé' : 'non initialisé'}
+            `;
+        }
+        
+        // Mettre à jour le statut périodiquement
+        setInterval(updateThemeStatus, 1000);
+        
+        // Écouter les changements de thème
+        window.addEventListener('themeChanged', updateThemeStatus);
+        window.addEventListener('themeChangeReady', updateThemeStatus);
+        
+        // Mise à jour initiale
+        setTimeout(updateThemeStatus, 500);
+    </script>
+</body>
+</html>

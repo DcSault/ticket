@@ -1,0 +1,225 @@
+/* 
+ * Styles pour le bouton de thème élégant et moderne
+ * Animations fluides et design contemporain
+ */
+
+/* Bouton de thème principal */
+#elegant-theme-toggle {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    cursor: pointer !important;
+    overflow: visible !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    outline: none !important;
+    transform: scale(1) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+/* États du bouton */
+#elegant-theme-toggle:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25) !important;
+}
+
+#elegant-theme-toggle:active {
+    transform: scale(0.95) !important;
+}
+
+#elegant-theme-toggle:focus {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 3px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* Thèmes spécifiques */
+#elegant-theme-toggle[data-theme="dark"] {
+    background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+#elegant-theme-toggle[data-theme="light"] {
+    background: linear-gradient(135deg, #FED7AA 0%, #FB923C 100%) !important;
+    box-shadow: 0 4px 20px rgba(251, 146, 60, 0.3) !important;
+}
+
+/* Container des icônes */
+.theme-icon-container {
+    position: relative !important;
+    width: 28px !important;
+    height: 28px !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Icônes soleil et lune */
+.sun-icon, .moon-icon {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 28px !important;
+    height: 28px !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Effet de particules */
+.particle-effect {
+    position: absolute !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transition: all 0.3s ease !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+/* Animation des particules */
+@keyframes sparkle {
+    0%, 100% { 
+        opacity: 0; 
+        transform: scale(0) rotate(0deg); 
+    }
+    50% { 
+        opacity: 1; 
+        transform: scale(1) rotate(180deg); 
+    }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-3px); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+    50% { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4); }
+}
+
+/* Particules individuelles */
+.particle-effect > div {
+    position: absolute !important;
+    width: 2px !important;
+    height: 2px !important;
+    background: #FFF !important;
+    border-radius: 50% !important;
+    animation: sparkle 1.5s ease-in-out infinite !important;
+}
+
+.particle-effect > div:nth-child(1) {
+    top: 20% !important;
+    left: 20% !important;
+    animation-duration: 1.5s !important;
+}
+
+.particle-effect > div:nth-child(2) {
+    top: 30% !important;
+    right: 25% !important;
+    animation-duration: 1.8s !important;
+    animation-delay: 0.3s !important;
+}
+
+.particle-effect > div:nth-child(3) {
+    bottom: 25% !important;
+    left: 30% !important;
+    animation-duration: 2s !important;
+    animation-delay: 0.6s !important;
+}
+
+/* Animation d'entrée */
+#elegant-theme-toggle {
+    animation: slideInFromTop 0.6s ease-out !important;
+}
+
+@keyframes slideInFromTop {
+    0% {
+        transform: translateY(-100px) scale(0.8) !important;
+        opacity: 0 !important;
+    }
+    100% {
+        transform: translateY(0) scale(1) !important;
+        opacity: 1 !important;
+    }
+}
+
+/* Animation au survol pour le conteneur d'icônes */
+#elegant-theme-toggle:hover .theme-icon-container {
+    animation: float 2s ease-in-out infinite !important;
+}
+
+/* Animation de pulsation pour les modes */
+#elegant-theme-toggle[data-theme="dark"] {
+    animation: pulse-glow-dark 4s ease-in-out infinite !important;
+}
+
+#elegant-theme-toggle[data-theme="light"] {
+    animation: pulse-glow-light 4s ease-in-out infinite !important;
+}
+
+@keyframes pulse-glow-dark {
+    0%, 100% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); }
+    50% { box-shadow: 0 6px 25px rgba(45, 55, 72, 0.5), 0 0 15px rgba(45, 55, 72, 0.3); }
+}
+
+@keyframes pulse-glow-light {
+    0%, 100% { box-shadow: 0 4px 20px rgba(251, 146, 60, 0.3); }
+    50% { box-shadow: 0 6px 25px rgba(251, 146, 60, 0.5), 0 0 15px rgba(255, 193, 7, 0.4); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    #elegant-theme-toggle {
+        width: 48px !important;
+        height: 48px !important;
+        top: 15px !important;
+        right: 15px !important;
+    }
+    
+    .theme-icon-container {
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    .sun-icon, .moon-icon {
+        width: 24px !important;
+        height: 24px !important;
+    }
+}
+
+/* Mode sombre système */
+@media (prefers-color-scheme: dark) {
+    #elegant-theme-toggle:not([data-theme]) {
+        background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%) !important;
+    }
+}
+
+/* Mode clair système */
+@media (prefers-color-scheme: light) {
+    #elegant-theme-toggle:not([data-theme]) {
+        background: linear-gradient(135deg, #FED7AA 0%, #FB923C 100%) !important;
+    }
+}
+
+/* Accessibilité - Réduction de mouvement */
+@media (prefers-reduced-motion: reduce) {
+    #elegant-theme-toggle,
+    .theme-icon-container,
+    .sun-icon,
+    .moon-icon,
+    .particle-effect {
+        animation: none !important;
+        transition: none !important;
+    }
+    
+    #elegant-theme-toggle:hover {
+        transform: none !important;
+    }
+}

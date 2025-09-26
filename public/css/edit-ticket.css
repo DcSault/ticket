@@ -1,0 +1,89 @@
+/* Importer les styles communs */
+@import url('/css/common.css');
+
+/* Styles pour la page d'édition de ticket */
+
+/* Animation d'entrée pour les éléments du formulaire */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Conteneur principal */
+.form-container {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Styles pour les champs de formulaire */
+.form-input {
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); outline: none; }
+
+/* Styles pour les champs en mode sombre */
+.dark .form-input:focus { border-color: var(--primary-dark); box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3); }
+
+/* Styles pour les datalists et autocomplete */
+datalist {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Styles pour les boutons */
+.btn {
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+/* Styles pour les checkboxes */
+input[type="checkbox"] {
+    cursor: pointer;
+    width: 1.1em;
+    height: 1.1em;
+}
+
+input[type="checkbox"]:checked { accent-color: var(--primary); }
+
+.dark input[type="checkbox"]:checked { accent-color: var(--primary-dark); }
+
+/* Styles pour les champs non-GLPI */
+.non-glpi-field {
+    transition: opacity 0.3s, max-height 0.3s, margin 0.3s;
+    overflow: hidden;
+}
+
+.non-glpi-field.hidden {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+}
+
+/* Styles pour les étiquettes */
+label {
+    transition: color 0.2s;
+}
+
+/* Styles pour les messages d'erreur */
+.error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.dark .error-message {
+    color: #f87171;
+} 

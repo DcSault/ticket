@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html class="dark:bg-gray-900">
+<head>
+    <title>Rapport - Support appels</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/common.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header (aligné sur index.html) -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">CallFix</h1>
+            <div class="flex items-center gap-4">
+                <a href="/" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Accueil
+                </a>
+                <a href="/stats" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Statistiques
+                </a>
+                <a href="/report" class="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Rapport
+                </a>
+            </div>
+        </div>
+
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">Rapport journalier</h2>
+
+        <!-- Controls -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+            <div class="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+                <div class="flex flex-wrap items-center gap-3">
+                    <input type="date" 
+                           id="reportDate" 
+                           onchange="updateReport()"
+                           class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <button onclick="previousDay()" 
+                            class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100">
+                        Jour précédent
+                    </button>
+                    <button onclick="today()" 
+                            class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100">
+                        Aujourd'hui
+                    </button>
+                    <button onclick="nextDay()" 
+                            class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100">
+                        Jour suivant
+                    </button>
+                </div>
+                <button onclick="generateReport()" 
+                class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Générer PDF
+        </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Total des appels</h3>
+                <div class="text-3xl font-bold text-blue-600" id="totalTickets">0</div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Ratio Matin/Après-midi</h3>
+                <div class="flex justify-between">
+                    <div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Matin</div>
+                        <div class="text-2xl font-bold text-green-600" id="morningRatio">0%</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Après-midi</div>
+                        <div class="text-2xl font-bold text-yellow-600" id="afternoonRatio">0%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Heure la plus active</h3>
+                <div class="text-3xl font-bold text-purple-600" id="peakHour">--:00</div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Daily Evolution -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md col-span-2">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Évolution des appels</h2>
+                <div class="h-96">
+                    <canvas id="evolutionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- GLPI Distribution -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Répartition GLPI</h2>
+                <div class="h-64">
+                    <canvas id="glpiChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Blocking Distribution -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Répartition Bloquant</h2>
+                <div class="h-64">
+                    <canvas id="blockingChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Hourly Distribution -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md col-span-2">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Distribution horaire</h2>
+                <div class="h-64">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Callers -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Top des appelants</h2>
+                <div class="h-64">
+                    <canvas id="callersChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Tags -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Tags les plus utilisés</h2>
+                <div class="h-64">
+                    <canvas id="tagsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts communs -->
+    <script src="/js/common.js"></script>
+    <script src="/js/apiClient.js"></script>
+    <script src="/js/themeManager.js"></script>
+    <script src="/js/version.js"></script>
+    
+    <!-- Script spécifique à la page -->
+    <script src="/js/report.js"></script>
+    
+    <!-- Footer avec informations de version -->
+    <footer class="mt-8 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+                <div>
+                    <span>Version <span class="app-version"></span></span>
+                </div>
+                <div>
+                    <span>Développé par <span class="app-developer"></span></span>
+                </div>
+                <div>
+                    <a href="#" class="app-github-link hover:text-blue-500 dark:hover:text-blue-400" target="_blank">
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html> 

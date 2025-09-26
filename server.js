@@ -1,29 +1,43 @@
+/**
+ * Serveur principal de l'application de gestion de tickets
+ * Version: 1.1.0
+ * Dernière mise à jour: Restructuration des fichiers CSS et JavaScript
+ */
+
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
-const fs = require('fs').promises;
 const path = require('path');
+const fs = require('fs');
+const fsPromises = require('fs').promises;
 const bodyParser = require('body-parser');
 const session = require('express-session');
-const Excel = require('exceljs');
+const { Op } = require('sequelize');
+
+
+// Import des modèles
+const { sequelize, User, Ticket, Message, SavedField } = require('./models');
 
 const app = express();
-const port = 666;
-const DATA_FILE = path.join(__dirname, 'data', 'tickets.json');
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const UPLOADS_DIR = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');
 
-// Configuration
+// Middleware Configuration
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Fichiers statiques
+app.use(express.static('public'));
+
 app.use(session({
-    secret: 'support-ticket-secret',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true
 }));
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
 
-// Configuration de Multer
+// Les fichiers HTML sont servis via sendFile sur des routes dédiées
+
+// Multer Configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, UPLOADS_DIR),
     filename: (req, file, cb) => {
@@ -41,11 +55,11 @@ const upload = multer({
         if (extname && mimetype) {
             return cb(null, true);
         }
-        cb(new Error('Seules les images sont autorisées'));
+        cb(new Error('Images only'));
     }
 });
 
-// Middleware d'authentification
+// Authentication Middleware
 const requireLogin = (req, res, next) => {
     if (!req.session.username) {
         return res.redirect('/login');
@@ -53,199 +67,63 @@ const requireLogin = (req, res, next) => {
     next();
 };
 
-// Mise à jour de initialData
-const initialData = {
-    tickets: [],
-    archives: [],
-    tags: [],
-    savedFields: {
-        callers: [],
-        reasons: []
-    },
-    savedUsers: []
-};
-
-// Fonctions utilitaires
-async function initializeApp() {
-    try {
-        await fs.mkdir(path.join(__dirname, 'data'), { recursive: true });
-        await fs.mkdir(UPLOADS_DIR, { recursive: true });
-
-        try {
-            await fs.access(DATA_FILE);
-        } catch {
-            await fs.writeFile(DATA_FILE, JSON.stringify(initialData, null, 2));
-        }
-
-        const data = await readData();
-        if (!data.savedFields) {
-            data.savedFields = initialData.savedFields;
-            await writeData(data);
-        }
-
-        console.log('Initialisation terminée');
-    } catch (error) {
-        console.error('Erreur d\'initialisation:', error);
-        process.exit(1);
-    }
-}
-
-async function readData() {
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-}
-
-async function writeData(data) {
-    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
-}
-
-// Fonction Stats
-// Modification de la fonction processStats
-function processStats(tickets, archives = []) {
-    const now = new Date();
-    const stats = {
-        day: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
-        week: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
-        month: { labels: [], data: [], glpiData: [], total: 0, glpi: 0 },
-        glpiTotal: 0,
-        nonGlpiTotal: 0,
-        topCallers: [],
-        topTags: []
-    };
-
-    // Préparation des périodes
-    for (let i = 29; i >= 0; i--) {
-        const date = new Date(now - i * 24 * 60 * 60 * 1000);
-        stats.day.labels.push(date.toLocaleDateString());
-        stats.day.data.push(0);
-        stats.day.glpiData.push(0);
-    }
-
-    for (let i = 3; i >= 0; i--) {
-        const weekStart = new Date(now - (i * 7 + 6) * 24 * 60 * 60 * 1000);
-        const weekEnd = new Date(now - i * 7 * 24 * 60 * 60 * 1000);
-        stats.week.labels.push(`${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`);
-        stats.week.data.push(0);
-        stats.week.glpiData.push(0);
-    }
-
-    for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        stats.month.labels.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
-        stats.month.data.push(0);
-        stats.month.glpiData.push(0);
-    }
-
-    // Fonction pour traiter un ticket
-    const processTicket = (ticket) => {
-        const date = new Date(ticket.createdAt);
-        const dayDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-        const monthDiff = (now.getMonth() - date.getMonth()) + (now.getFullYear() - date.getFullYear()) * 12;
-
-        if (dayDiff < 30) {
-            stats.day.data[29 - dayDiff]++;
-            if (ticket.isGLPI) stats.day.glpiData[29 - dayDiff]++;
-        }
-
-        if (dayDiff < 28) {
-            const weekIndex = Math.floor(dayDiff / 7);
-            if (weekIndex < 4) {
-                stats.week.data[3 - weekIndex]++;
-                if (ticket.isGLPI) stats.week.glpiData[3 - weekIndex]++;
-            }
-        }
-
-        if (monthDiff < 12) {
-            stats.month.data[11 - monthDiff]++;
-            if (ticket.isGLPI) stats.month.glpiData[11 - monthDiff]++;
-        }
-
-        if (ticket.isGLPI) {
-            stats.glpiTotal++;
-        } else {
-            stats.nonGlpiTotal++;
-            if (ticket.tags) {
-                ticket.tags.forEach(tag => {
-                    tagStats[tag] = (tagStats[tag] || 0) + 1;
-                });
-            }
-        }
-
-        callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
-    };
-
-    // Analyse des tickets et des archives
-    const callerStats = {};
-    const tagStats = {};
-    
-    // Traiter les tickets actifs
-    tickets.forEach(processTicket);
-    
-    // Traiter les archives
-    archives.forEach(processTicket);
-
-    stats.topCallers = Object.entries(callerStats)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-    stats.topTags = Object.entries(tagStats)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-    ['day', 'week', 'month'].forEach(period => {
-        stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
-        stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
-    });
-
-    return stats;
-}
-
-// Analyse Archivage
-function shouldArchive(ticket) {
-    const oneDayAgo = new Date();
-    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
-    const ticketDate = new Date(ticket.createdAt);
-    return ticketDate < oneDayAgo;
-}
-
+// Fonction pour archiver les tickets anciens
 async function archiveOldTickets() {
-    const data = await readData();
-    const [toArchive, current] = data.tickets.reduce(([arch, curr], ticket) => {
-        return shouldArchive(ticket) 
-            ? [[...arch, ticket], curr]
-            : [arch, [...curr, ticket]];
-    }, [[], []]);
+    try {
+        const tickets = await Ticket.findAll({
+            where: {
+                isArchived: false,
+                createdAt: {
+                    [Op.lt]: new Date(new Date() - 24 * 60 * 60 * 1000) // Tickets de plus de 24 heures
+                }
+            }
+        });
 
-    if (toArchive.length > 0) {
-        data.archives = [...toArchive, ...(data.archives || [])];
-        data.tickets = current;
-        await writeData(data);
+        for (const ticket of tickets) {
+            await ticket.update({ isArchived: true, archivedAt: new Date(), archivedBy: 'system' });
+        }
+    } catch (error) {
+        console.error('Erreur lors de l\'archivage des tickets:', error);
     }
 }
 
-// Ajouter à startServer()
-setInterval(archiveOldTickets, 24 * 60 * 60 * 1000); // Vérification journalière
+// Appel de la fonction toutes les 24 heures
+setInterval(archiveOldTickets, 24 * 60 * 60 * 1000);
 
+// Configuration pour utiliser uniquement les fichiers HTML
 
 // Routes d'authentification
-app.get('/login', async (req, res) => {
-    const data = await readData();
-    res.render('login', { savedUsers: data.savedUsers || [] });
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/login.html'));
+});
+
+// Route API pour récupérer la liste des utilisateurs (pour l'autocomplétion)
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await User.findAll({
+            attributes: ['username'],
+            order: [['username', 'ASC']]
+        });
+        res.json(users.map(user => user.username));
+    } catch (error) {
+        console.error('Erreur lors de la récupération des utilisateurs:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 app.post('/login', async (req, res) => {
     const { username } = req.body;
-    if (username && username.trim()) {
-        const data = await readData();
-        if (!data.savedUsers) data.savedUsers = [];
-        if (!data.savedUsers.includes(username.trim())) {
-            data.savedUsers.push(username.trim());
-            await writeData(data);
+    if (username?.trim()) {
+        try {
+            await User.findOrCreate({
+                where: { username: username.trim() }
+            });
+            req.session.username = username.trim();
+            res.redirect('/');
+        } catch (error) {
+            console.error('Erreur création utilisateur:', error);
+            res.redirect('/login');
         }
-        req.session.username = username.trim();
-        res.redirect('/');
     } else {
         res.redirect('/login');
     }
@@ -257,187 +135,92 @@ app.get('/logout', (req, res) => {
 });
 
 // Routes principales
-app.get('/', requireLogin, async (req, res) => {
-    try {
-        const data = await readData();
-        res.render('index', {
-            tickets: data.tickets,
-            tags: data.tags,
-            savedFields: data.savedFields,
-            username: req.session.username
-        });
-    } catch (error) {
-        console.error('Erreur page d\'accueil:', error);
-        res.status(500).send('Erreur serveur');
-    }
-});
-
-// Routes des statistiques
-app.get('/stats', async (req, res) => {
-    try {
-        const data = await readData();
-        const stats = processStats(data.tickets, data.archives || []);
-        res.render('stats', { stats });
-    } catch (error) {
-        console.error('Erreur stats:', error);
-        res.status(500).send('Erreur serveur');
-    }
-});
-
-// Mise à jour de la route d'export
-app.get('/api/stats/export', async (req, res) => {
-    try {
-        const data = await readData();
-        const stats = processStats(data.tickets, data.archives || []);
-        const workbook = new Excel.Workbook();
-        
-        const period = req.query.period || 'day';
-        const periodData = stats[period];
-
-        // Feuille principale
-        const sheet = workbook.addWorksheet('Statistiques');
-        
-        sheet.addRow(['Période', 'Total tickets', 'Tickets GLPI']);
-        periodData.labels.forEach((label, index) => {
-            sheet.addRow([
-                label,
-                periodData.data[index],
-                periodData.glpiData[index]
-            ]);
-        });
-
-        // Tags
-        const tagsSheet = workbook.addWorksheet('Tags');
-        tagsSheet.addRow(['Tag', 'Utilisations']);
-        stats.topTags.forEach(tag => {
-            tagsSheet.addRow([tag.name, tag.count]);
-        });
-
-        // Appelants
-        const callersSheet = workbook.addWorksheet('Appelants');
-        callersSheet.addRow(['Appelant', 'Tickets']);
-        stats.topCallers.forEach(caller => {
-            callersSheet.addRow([caller.name, caller.count]);
-        });
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=stats-tickets-${period}.xlsx`);
-
-        await workbook.xlsx.write(res);
-        res.end();
-    } catch (error) {
-        console.error('Erreur export:', error);
-        res.status(500).send('Erreur export');
-    }
+app.get('/', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/index.html'));
 });
 
 // Routes des tickets
 app.post('/api/tickets', requireLogin, async (req, res) => {
     try {
-        const data = await readData();
-        const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()) : [];
+        const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
         
-        const newTicket = {
-            id: Date.now().toString(),
+        const ticket = await Ticket.create({
             caller: req.body.caller,
             reason: req.body.reason || '',
-            tags,
+            tags: tags,
             status: 'open',
-            messages: [],
-            createdAt: new Date().toISOString(),
-            createdBy: req.session.username,
-            isGLPI: req.body.isGLPI === 'true'
-        };
-        
-        if (!newTicket.isGLPI) {
-            if (!data.savedFields.callers.includes(req.body.caller)) {
-                data.savedFields.callers.push(req.body.caller);
-            }
-            if (req.body.reason && !data.savedFields.reasons.includes(req.body.reason)) {
-                data.savedFields.reasons.push(req.body.reason);
-            }
+            isGLPI: req.body.isGLPI === 'true',
+            isBlocking: req.body.isBlocking === 'true',
+            glpiNumber: req.body.isGLPI === 'true' ? (req.body.glpiNumber || null) : null,
+            createdBy: req.session.username
+        });
+
+        if (!ticket.isGLPI) {
+            await Promise.all([
+                SavedField.findOrCreate({ where: { type: 'caller', value: req.body.caller }}),
+                req.body.reason && SavedField.findOrCreate({ where: { type: 'reason', value: req.body.reason }}),
+                ...tags.map(tag => SavedField.findOrCreate({ where: { type: 'tag', value: tag }}))
+            ]);
         }
-        
-        data.tickets.unshift(newTicket);
-        await writeData(data);
-        res.redirect('/');
+
+        // Par défaut on redirige (soumissions de formulaires). Si requête JSON, retourner JSON
+        if (req.is('application/json')) {
+            return res.status(201).json(ticket);
+        }
+        return res.redirect('/');
     } catch (error) {
         console.error('Erreur création ticket:', error);
         res.status(500).send('Erreur lors de la création du ticket');
     }
 });
 
-app.get('/ticket/:id', requireLogin, async (req, res) => {
-    try {
-        const data = await readData();
-        const ticket = data.tickets.find(t => t.id === req.params.id);
-        
-        if (!ticket || ticket.isGLPI) {
-            return res.redirect('/');
-        }
-
-        res.render('ticket', { 
-            ticket,
-            username: req.session.username
-        });
-    } catch (error) {
-        console.error('Erreur page ticket:', error);
-        res.status(500).send('Erreur serveur');
-    }
+app.get('/ticket/:id', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/ticket.html'));
 });
 
-app.get('/ticket/:id/edit', requireLogin, async (req, res) => {
+app.get('/ticket/:id/edit', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/edit-ticket.html'));
+});
+
+app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
     try {
-        const data = await readData();
-        const ticket = data.tickets.find(t => t.id === req.params.id);
+        const ticket = await Ticket.findByPk(req.params.id);
         
         if (!ticket) {
             return res.redirect('/');
         }
 
-        res.render('edit-ticket', { 
-            ticket,
-            savedFields: data.savedFields,
-            username: req.session.username
-        });
-    } catch (error) {
-        console.error('Erreur page édition:', error);
-        res.status(500).send('Erreur serveur');
-    }
-});
-
-app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
-    try {
-        const data = await readData();
-        const ticketIndex = data.tickets.findIndex(t => t.id === req.params.id);
-        
-        if (ticketIndex === -1) {
-            return res.redirect('/');
-        }
-
-        const oldTicket = data.tickets[ticketIndex];
-        const updatedTicket = {
-            ...oldTicket,
+        const updatedData = {
             caller: req.body.caller,
             reason: req.body.isGLPI === 'true' ? '' : (req.body.reason || ''),
-            tags: req.body.isGLPI === 'true' ? [] : (req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()) : []),
+            tags: req.body.isGLPI === 'true' ? [] : (req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : []),
             isGLPI: req.body.isGLPI === 'true',
+            isBlocking: req.body.isBlocking === 'true',
+            glpiNumber: req.body.isGLPI === 'true' ? (req.body.glpiNumber || null) : null,
             lastModifiedBy: req.session.username,
-            lastModifiedAt: new Date().toISOString()
+            lastModifiedAt: new Date()
         };
 
-        if (!updatedTicket.isGLPI) {
-            if (!data.savedFields.callers.includes(req.body.caller)) {
-                data.savedFields.callers.push(req.body.caller);
-            }
-            if (req.body.reason && !data.savedFields.reasons.includes(req.body.reason)) {
-                data.savedFields.reasons.push(req.body.reason);
+        // Mise à jour de la date de création si spécifiée
+        if (req.body.creationDate && req.body.creationTime) {
+            const dateStr = `${req.body.creationDate}T${req.body.creationTime}:00`;
+            const newCreatedAt = new Date(dateStr);
+            
+            // Vérifier que la date est valide
+            if (!isNaN(newCreatedAt.getTime())) {
+                updatedData.createdAt = newCreatedAt;
             }
         }
 
-        data.tickets[ticketIndex] = updatedTicket;
-        await writeData(data);
-        res.redirect('/');
+        if (!updatedData.isGLPI) {
+            await Promise.all([
+                SavedField.findOrCreate({ where: { type: 'caller', value: req.body.caller }}),
+                req.body.reason && SavedField.findOrCreate({ where: { type: 'reason', value: req.body.reason }})
+            ]);
+        }
+
+        await ticket.update(updatedData);
+        return res.redirect('/');
     } catch (error) {
         console.error('Erreur modification ticket:', error);
         res.status(500).send('Erreur lors de la modification du ticket');
@@ -446,24 +229,25 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
 
 app.post('/api/tickets/:id/delete', requireLogin, async (req, res) => {
     try {
-        const data = await readData();
-        const ticket = data.tickets.find(t => t.id === req.params.id);
+        const ticket = await Ticket.findByPk(req.params.id, {
+            include: [Message]
+        });
 
         if (ticket) {
-            for (const message of ticket.messages) {
+            // Supprimer les fichiers images associés
+            for (const message of ticket.Messages) {
                 if (message.type === 'image' && message.content.startsWith('/uploads/')) {
-                    const imagePath = path.join(__dirname, message.content);
                     try {
-                        await fs.unlink(imagePath);
+                        const fileName = path.basename(message.content);
+                        const imagePath = path.join(UPLOADS_DIR, fileName);
+                        await fsPromises.unlink(imagePath);
                     } catch (err) {
                         console.error('Erreur suppression image:', err);
                     }
                 }
             }
+            await ticket.destroy();
         }
-
-        data.tickets = data.tickets.filter(t => t.id !== req.params.id);
-        await writeData(data);
         res.redirect('/');
     } catch (error) {
         console.error('Erreur suppression ticket:', error);
@@ -471,45 +255,344 @@ app.post('/api/tickets/:id/delete', requireLogin, async (req, res) => {
     }
 });
 
-app.post('/api/tickets/:id/messages', requireLogin, upload.single('image'), async (req, res) => {
+app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
     try {
-        const data = await readData();
-        const ticket = data.tickets.find(t => t.id === req.params.id);
+        const ticket = await Ticket.findByPk(req.params.id);
         
-        if (!ticket || ticket.isGLPI) {
-            return res.status(404).send('Ticket non trouvé ou ticket GLPI');
+        if (!ticket) {
+            return res.status(404).send('Ticket non trouvé');
         }
 
-        const newMessage = {
-            id: Date.now().toString(),
-            content: req.file ? `/uploads/${req.file.filename}` : req.body.content,
-            type: req.file ? 'image' : 'text',
-            timestamp: new Date().toISOString(),
-            author: req.session.username
-        };
-
-        ticket.messages.push(newMessage);
-        await writeData(data);
-        
-        res.redirect(`/ticket/${req.params.id}`);
+        await ticket.update({ isArchived: true, archivedAt: new Date(), archivedBy: req.session.username });
+        res.redirect('/');
     } catch (error) {
-        console.error('Erreur ajout message:', error);
-        res.status(500).send('Erreur lors de l\'ajout du message');
+        console.error('Erreur lors de l\'archivage:', error);
+        res.status(500).send('Erreur lors de l\'archivage');
     }
 });
 
-app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
+// Messages: accepte texte (JSON) ou image (multipart avec champ 'image')
+app.post('/api/tickets/:id/messages', requireLogin, upload.single('image'), async (req, res) => {
     try {
-        const data = await readData();
-        const { field, value } = req.body;
+        const ticket = await Ticket.findByPk(req.params.id);
         
-        if (field === 'caller') {
-            data.savedFields.callers = data.savedFields.callers.filter(c => c !== value);
-        } else if (field === 'reason') {
-            data.savedFields.reasons = data.savedFields.reasons.filter(r => r !== value);
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket non trouvé' });
+        }
+
+        // Si un fichier image est fourni (multipart)
+        if (req.file) {
+            const message = await Message.create({
+                content: `/uploads/${req.file.filename}`,
+                type: 'image',
+                author: req.session.username,
+                TicketId: ticket.id
+            });
+            return res.status(201).json(message);
+        }
+
+        // Sinon, traiter comme message texte (JSON/application/x-www-form-urlencoded)
+        const content = (req.body && req.body.content) ? String(req.body.content) : '';
+        if (!content.trim()) {
+            return res.status(400).json({ error: 'Contenu du message requis' });
+        }
+        const message = await Message.create({
+            content,
+            type: 'text',
+            author: req.session.username,
+            TicketId: ticket.id
+        });
+        return res.status(201).json(message);
+    } catch (error) {
+        console.error('Erreur ajout message:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'ajout du message' });
+    }
+});
+
+// (Route upload dédiée supprimée au profit de /api/tickets/:id/messages)
+
+// Archives
+app.get('/archives', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/archives.html'));
+});
+
+app.get('/api/archives', requireLogin, async (req, res) => {
+    try {
+        // Récupérer les filtres depuis la requête
+        const { search, startDate, endDate, filter, value } = req.query;
+        
+        // Construire la requête de base
+        let whereClause = {
+            isArchived: true
+        };
+        
+        // Ajouter les filtres si présents
+        if (search) {
+            whereClause[Op.or] = [
+                { caller: { [Op.iLike]: `%${search}%` } },
+                { reason: { [Op.iLike]: `%${search}%` } }
+            ];
         }
         
-        await writeData(data);
+        if (startDate) {
+            whereClause.createdAt = whereClause.createdAt || {};
+            whereClause.createdAt[Op.gte] = new Date(startDate);
+        }
+        
+        if (endDate) {
+            whereClause.createdAt = whereClause.createdAt || {};
+            whereClause.createdAt[Op.lte] = new Date(endDate);
+        }
+        
+        if (filter && value) {
+            if (filter === 'tag') {
+                whereClause.tags = { [Op.contains]: [value] };
+            } else {
+                whereClause[filter] = { [Op.iLike]: `%${value}%` };
+            }
+        }
+        
+        // Récupérer les tickets archivés
+        const archives = await Ticket.findAll({
+            where: whereClause,
+            order: [['createdAt', 'DESC']]
+        });
+        
+        res.json(archives);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des archives:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des archives' });
+    }
+});
+
+app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        
+        // Récupérer le ticket avec ses messages
+        const ticket = await Ticket.findByPk(ticketId, {
+            include: [Message]
+        });
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket non trouvé' });
+        }
+        
+        res.json(ticket);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des détails du ticket:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des détails du ticket' });
+    }
+});
+
+// Stats
+app.get('/stats', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/stats.html'));
+});
+
+// Route pour afficher la page de rapport
+app.get('/report', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/report.html'));
+});
+
+// Route temporaire pour tester le nouveau système de thème
+app.get('/theme-test', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/theme-test.html'));
+});
+
+// API pour les statistiques
+app.get('/api/stats', async (req, res) => {
+    try {
+        // Filtres optionnels par date (from/to en ISO yyyy-mm-dd)
+        const { from, to } = req.query;
+        const where = {};
+        if (from || to) {
+            where.createdAt = {};
+            if (from) where.createdAt[Op.gte] = new Date(from);
+            if (to) {
+                const end = new Date(to);
+                end.setHours(23, 59, 59, 999);
+                where.createdAt[Op.lte] = end;
+            }
+        }
+
+        const tickets = await Ticket.findAll({
+            where,
+            order: [['createdAt', 'DESC']]
+        });
+
+        const stats = await processStats(tickets);
+        res.json(stats);
+    } catch (error) {
+        console.error('Erreur stats API:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// API pour les données de rapport
+app.get('/api/report-data', async (req, res) => {
+    try {
+        const date = req.query.date ? new Date(req.query.date) : new Date();
+        const reportData = await getReportStats(date);
+        res.json(reportData);
+    } catch (error) {
+        console.error('Erreur API rapport:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Fonction pour calculer automatiquement les dates de changement d'heure en France
+function getFrenchDSTDates(year) {
+    // Règle européenne: dernier dimanche de mars à 2h00 -> dernier dimanche d'octobre à 3h00
+    
+    // Trouver le dernier dimanche de mars
+    const march31 = new Date(Date.UTC(year, 2, 31)); // 31 mars
+    const lastSundayMarch = new Date(march31);
+    const daysToSubtract = march31.getUTCDay(); // 0 = dimanche, 1 = lundi, etc.
+    lastSundayMarch.setUTCDate(31 - daysToSubtract);
+    lastSundayMarch.setUTCHours(2, 0, 0, 0); // 2h00 du matin
+    
+    // Trouver le dernier dimanche d'octobre
+    const october31 = new Date(Date.UTC(year, 9, 31)); // 31 octobre
+    const lastSundayOctober = new Date(october31);
+    const daysToSubtractOct = october31.getUTCDay();
+    lastSundayOctober.setUTCDate(31 - daysToSubtractOct);
+    lastSundayOctober.setUTCHours(3, 0, 0, 0); // 3h00 du matin
+    
+    return {
+        startDST: lastSundayMarch,    // Début heure d'été
+        endDST: lastSundayOctober     // Fin heure d'été
+    };
+}
+
+// Fonction pour obtenir l'heure locale française
+function getFrenchLocalHour(dateString) {
+    const date = new Date(dateString);
+    const year = date.getUTCFullYear();
+    
+    // Obtenir les dates de changement d'heure pour l'année
+    const dstDates = getFrenchDSTDates(year);
+    
+    // Déterminer si on est en heure d'été (DST)
+    const isDST = date >= dstDates.startDST && date < dstDates.endDST;
+    const offset = isDST ? 2 : 1; // UTC+2 en été, UTC+1 en hiver
+    
+    // Calculer l'heure locale française
+    const utcHour = date.getUTCHours();
+    const frenchHour = (utcHour + offset) % 24;
+    
+
+    
+    return frenchHour;
+}
+
+// Fonction pour normaliser une date en heure locale française
+function normalizeFrenchDate(dateString) {
+    const date = new Date(dateString);
+    const year = date.getUTCFullYear();
+    
+    // Obtenir les dates de changement d'heure pour l'année
+    const dstDates = getFrenchDSTDates(year);
+    
+    // Déterminer si on est en heure d'été (DST)
+    const isDST = date >= dstDates.startDST && date < dstDates.endDST;
+    const offset = isDST ? 2 : 1; // UTC+2 en été, UTC+1 en hiver
+    
+    // Créer une nouvelle date avec l'heure locale française
+    const frenchDate = new Date(date.getTime() + (offset * 60 * 60 * 1000));
+    
+    return frenchDate;
+}
+
+// Fonction pour générer les statistiques du rapport
+async function getReportStats(date) {
+    // Statistiques quotidiennes
+    const dayStart = new Date(date);
+    dayStart.setHours(0,0,0,0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23,59,59,999);
+
+    const tickets = await Ticket.findAll({
+        where: {
+            createdAt: {
+                [Op.between]: [dayStart, dayEnd]
+            }
+        }
+    });
+
+    // Si aucun ticket, retourner des valeurs par défaut
+    if (tickets.length === 0) {
+        return {
+            total: 0,
+            glpi: 0,
+            blocking: 0,
+            hourlyDistribution: Array(24).fill(0),
+            morningTickets: 0,
+            afternoonTickets: 0,
+            morningRatio: 0,
+            afternoonRatio: 0,
+            topCallers: {},
+            topTags: {}
+        };
+    }
+
+    // Calculer les ratios et tranches horaires
+    // Normaliser les dates pour éviter les problèmes de fuseau horaire
+    const morningTickets = tickets.filter(t => {
+        const localHour = getFrenchLocalHour(t.createdAt);
+        return localHour < 12;
+    });
+    const afternoonTickets = tickets.filter(t => {
+        const localHour = getFrenchLocalHour(t.createdAt);
+        return localHour >= 12;
+    });
+
+    const hourlyDistribution = Array(24).fill(0);
+    tickets.forEach(t => {
+        const hour = getFrenchLocalHour(t.createdAt);
+        hourlyDistribution[hour]++;
+    });
+
+    // Calculer les statistiques des appelants et des tags
+    const topCallers = {};
+    const topTags = {};
+
+    tickets.forEach(ticket => {
+        // Comptabiliser les appelants
+        topCallers[ticket.caller] = (topCallers[ticket.caller] || 0) + 1;
+
+        // Comptabiliser les tags
+        if (ticket.tags && Array.isArray(ticket.tags)) {
+            ticket.tags.forEach(tag => {
+                topTags[tag] = (topTags[tag] || 0) + 1;
+            });
+        }
+    });
+
+    return {
+        total: tickets.length,
+        glpi: tickets.filter(t => t.isGLPI).length,
+        blocking: tickets.filter(t => t.isBlocking).length,
+        morningTickets: morningTickets.length,
+        afternoonTickets: afternoonTickets.length,
+        morningRatio: tickets.length > 0 ? morningTickets.length / tickets.length : 0,
+        afternoonRatio: tickets.length > 0 ? afternoonTickets.length / tickets.length : 0,
+        hourlyDistribution,
+        topCallers,
+        topTags
+    };
+}
+
+// Delete saved field
+app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
+    try {
+        const { field, value } = req.body;
+        await SavedField.destroy({
+            where: { 
+                type: field,
+                value: value
+            }
+        });
         res.redirect('/');
     } catch (error) {
         console.error('Erreur suppression champ:', error);
@@ -517,118 +600,335 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
     }
 });
 
-app.get('/archives', requireLogin, async (req, res) => {
-    try {
-        const data = await readData();
-        let archives = data.archives || [];
-        const { search, filter, value, startDate, endDate } = req.query;
+// Fonction pour générer les statistiques
+async function processStats(tickets) {
+    console.log(`Traitement de ${tickets.length} tickets pour les statistiques`);
+    
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    
+    const stats = {
+        day: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        week: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        month: { labels: [], data: [], glpiData: [], blockingData: [], total: 0, glpi: 0, blocking: 0 },
+        detailedData: [],
+        topTags: [],
+        topCallers: []
+    };
+
+    // Préparer les structures pour les comptages
+    const dailyCounts = new Map();
+    const dailyGLPICounts = new Map();
+    const dailyBlockingCounts = new Map();
+    
+    const weekCounts = new Map();
+    const weekGLPICounts = new Map();
+    const weekBlockingCounts = new Map();
+    
+    const monthCounts = new Map();
+    const monthGLPICounts = new Map();
+    const monthBlockingCounts = new Map();
+
+    // Initialiser les derniers 30 jours
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        const dateStr = date.toLocaleDateString('fr-FR');
         
-        // Filtrage par date
-        if (startDate || endDate) {
-            archives = archives.filter(ticket => {
-                const ticketDate = new Date(ticket.createdAt);
-                const start = startDate ? new Date(startDate) : new Date(0);
-                const end = endDate ? new Date(endDate) : new Date();
-                end.setHours(23, 59, 59, 999); // Inclure toute la journée de fin
-                return ticketDate >= start && ticketDate <= end;
-            });
-        }
+        dailyCounts.set(dateStr, 0);
+        dailyGLPICounts.set(dateStr, 0);
+        dailyBlockingCounts.set(dateStr, 0);
+        
+        stats.day.labels.push(dateStr);
+    }
 
-        // Filtrage par recherche globale
-        if (search) {
-            const searchLower = search.toLowerCase();
-            archives = archives.filter(ticket => 
-                ticket.caller.toLowerCase().includes(searchLower) ||
-                ticket.reason.toLowerCase().includes(searchLower) ||
-                ticket.tags.some(tag => tag.toLowerCase().includes(searchLower))
-            );
-        }
+    // Initialiser les 4 dernières semaines
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1);
+    weekStart.setHours(0, 0, 0, 0);
 
-        // Filtrage spécifique
-        if (filter && value) {
-            const valueLower = value.toLowerCase();
-            switch(filter) {
-                case 'caller':
-                    archives = archives.filter(ticket => 
-                        ticket.caller.toLowerCase().includes(valueLower));
-                    break;
-                case 'tag':
-                    archives = archives.filter(ticket => 
-                        ticket.tags.some(tag => tag.toLowerCase().includes(valueLower)));
-                    break;
-                case 'reason':
-                    archives = archives.filter(ticket => 
-                        ticket.reason.toLowerCase().includes(valueLower));
-                    break;
+    for (let i = 3; i >= 0; i--) {
+        const start = new Date(weekStart);
+        start.setDate(start.getDate() - (i * 7));
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        
+        const weekLabel = `${start.toLocaleDateString('fr-FR')} - ${end.toLocaleDateString('fr-FR')}`;
+        stats.week.labels.push(weekLabel);
+        
+        weekCounts.set(weekLabel, 0);
+        weekGLPICounts.set(weekLabel, 0);
+        weekBlockingCounts.set(weekLabel, 0);
+    }
+
+    // Initialiser les 12 derniers mois
+    for (let i = 11; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthLabel = monthStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+        stats.month.labels.push(monthLabel);
+        
+        monthCounts.set(monthLabel, 0);
+        monthGLPICounts.set(monthLabel, 0);
+        monthBlockingCounts.set(monthLabel, 0);
+    }
+
+    // Traiter chaque ticket
+    const tagStats = {};
+    const callerStats = {};
+
+    tickets.forEach(ticket => {
+        // Ajouter ce ticket aux données détaillées
+        stats.detailedData.push({
+            id: ticket.id,
+            date: ticket.createdAt,
+            caller: ticket.caller,
+            tags: ticket.tags,
+            isGLPI: ticket.isGLPI,
+            isBlocking: ticket.isBlocking
+        });
+
+        // Traitement pour les statistiques quotidiennes
+        const ticketDate = normalizeFrenchDate(ticket.createdAt);
+        const dateStr = ticketDate.toLocaleDateString('fr-FR');
+        
+        if (dailyCounts.has(dateStr)) {
+            dailyCounts.set(dateStr, dailyCounts.get(dateStr) + 1);
+            
+            if (ticket.isGLPI) {
+                dailyGLPICounts.set(dateStr, dailyGLPICounts.get(dateStr) + 1);
+            }
+            
+            if (ticket.isBlocking) {
+                dailyBlockingCounts.set(dateStr, dailyBlockingCounts.get(dateStr) + 1);
             }
         }
 
-        // Tri des archives
-        archives.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
-        res.render('archives', { 
-            archives,
-            savedFields: data.savedFields,
-            search,
-            filter,
-            value,
-            startDate,
-            endDate
-        });
-    } catch (error) {
-        console.error('Erreur archives:', error);
-        res.status(500).send('Erreur serveur');
-    }
-});
-
-app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
-    try {
-        const data = await readData();
-        const ticket = data.archives.find(t => t.id === req.params.id);
-        
-        if (!ticket) {
-            return res.status(404).json({ error: 'Archive non trouvée' });
+        // Traitement pour les statistiques hebdomadaires
+        for (const weekLabel of weekCounts.keys()) {
+            const [startStr, endStr] = weekLabel.split(' - ');
+            const weekStartDate = new Date(startStr.split('/').reverse().join('-'));
+            const weekEndDate = new Date(endStr.split('/').reverse().join('-'));
+            weekEndDate.setHours(23, 59, 59, 999);
+            
+            // Utiliser la date normalisée pour la comparaison
+            if (ticketDate >= weekStartDate && ticketDate <= weekEndDate) {
+                weekCounts.set(weekLabel, weekCounts.get(weekLabel) + 1);
+                
+                if (ticket.isGLPI) {
+                    weekGLPICounts.set(weekLabel, weekGLPICounts.get(weekLabel) + 1);
+                }
+                
+                if (ticket.isBlocking) {
+                    weekBlockingCounts.set(weekLabel, weekBlockingCounts.get(weekLabel) + 1);
+                }
+                
+                break; // Un ticket ne peut être que dans une seule semaine
+            }
         }
 
-        res.json(ticket);
+        // Traitement pour les statistiques mensuelles
+        for (const monthLabel of monthCounts.keys()) {
+            const [month, year] = monthLabel.split(' ');
+            const monthIndex = [
+                'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+            ].indexOf(month.toLowerCase());
+            
+            if (monthIndex !== -1) {
+                const monthStartDate = new Date(parseInt(year), monthIndex, 1);
+                const monthEndDate = new Date(parseInt(year), monthIndex + 1, 0);
+                monthEndDate.setHours(23, 59, 59, 999);
+                
+                // Utiliser la date normalisée pour la comparaison
+                if (ticketDate >= monthStartDate && ticketDate <= monthEndDate) {
+                    monthCounts.set(monthLabel, monthCounts.get(monthLabel) + 1);
+                    
+                    if (ticket.isGLPI) {
+                        monthGLPICounts.set(monthLabel, monthGLPICounts.get(monthLabel) + 1);
+                    }
+                    
+                    if (ticket.isBlocking) {
+                        monthBlockingCounts.set(monthLabel, monthBlockingCounts.get(monthLabel) + 1);
+                    }
+                    
+                    break; // Un ticket ne peut être que dans un seul mois
+                }
+            }
+        }
+
+        // Compter les tags
+        if (ticket.tags && Array.isArray(ticket.tags)) {
+            ticket.tags.forEach(tag => {
+                if (tag) {
+                    tagStats[tag] = (tagStats[tag] || 0) + 1;
+                }
+            });
+        }
+
+        // Compter les appelants
+        if (ticket.caller) {
+            callerStats[ticket.caller] = (callerStats[ticket.caller] || 0) + 1;
+        }
+    });
+
+    // Remplir les tableaux de données
+    stats.day.labels.forEach(dateStr => {
+        stats.day.data.push(dailyCounts.get(dateStr) || 0);
+        stats.day.glpiData.push(dailyGLPICounts.get(dateStr) || 0);
+        stats.day.blockingData.push(dailyBlockingCounts.get(dateStr) || 0);
+    });
+
+    stats.week.labels.forEach(weekLabel => {
+        stats.week.data.push(weekCounts.get(weekLabel) || 0);
+        stats.week.glpiData.push(weekGLPICounts.get(weekLabel) || 0);
+        stats.week.blockingData.push(weekBlockingCounts.get(weekLabel) || 0);
+    });
+
+    stats.month.labels.forEach(monthLabel => {
+        stats.month.data.push(monthCounts.get(monthLabel) || 0);
+        stats.month.glpiData.push(monthGLPICounts.get(monthLabel) || 0);
+        stats.month.blockingData.push(monthBlockingCounts.get(monthLabel) || 0);
+    });
+
+    // Calculer les totaux
+    ['day', 'week', 'month'].forEach(period => {
+        stats[period].total = stats[period].data.reduce((a, b) => a + b, 0);
+        stats[period].glpi = stats[period].glpiData.reduce((a, b) => a + b, 0);
+        stats[period].blocking = stats[period].blockingData.reduce((a, b) => a + b, 0);
+    });
+
+    // Calculer les top tags et appelants
+    stats.topTags = Object.entries(tagStats)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    stats.topCallers = Object.entries(callerStats)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    console.log(`Statistiques générées: ${stats.detailedData.length} tickets traités`);
+    return stats;
+}
+
+// Routes API pour les données
+app.get('/api/user', requireLogin, (req, res) => {
+    res.json({ username: req.session.username });
+});
+
+app.get('/api/tickets', requireLogin, async (req, res) => {
+    try {
+        const tickets = await Ticket.findAll({
+            include: [Message],
+            where: { isArchived: false },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(tickets);
     } catch (error) {
-        console.error('Erreur détails archive:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('Erreur lors de la récupération des tickets:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des tickets' });
     }
 });
 
-app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
+app.get('/api/tickets/:id', requireLogin, async (req, res) => {
     try {
-        const data = await readData();
-        const ticketIndex = data.tickets.findIndex(t => t.id === req.params.id);
-        
-        if (ticketIndex === -1) return res.status(404).send('Ticket non trouvé');
-
-        const ticket = data.tickets[ticketIndex];
-        if (!data.archives) data.archives = [];
-        
-        data.archives.unshift({
-            ...ticket,
-            archivedAt: new Date().toISOString(),
-            archivedBy: req.session.username
+        const ticket = await Ticket.findByPk(req.params.id, {
+            include: [Message]
         });
         
-        data.tickets.splice(ticketIndex, 1);
-        await writeData(data);
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket non trouvé' });
+        }
         
-        res.redirect('/');
+        res.json(ticket);
     } catch (error) {
-        console.error('Erreur archivage:', error);
-        res.status(500).send('Erreur lors de l\'archivage');
+        console.error('Erreur lors de la récupération du ticket:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération du ticket' });
+    }
+});
+
+app.get('/api/saved-fields', requireLogin, async (req, res) => {
+    try {
+        const savedFields = await SavedField.findAll();
+        
+        res.json({
+            callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
+            reasons: savedFields.filter(f => f.type === 'reason').map(f => f.value),
+            tags: savedFields.filter(f => f.type === 'tag').map(f => f.value)
+        });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des champs mémorisés:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des champs mémorisés' });
+    }
+});
+
+// Gestion des erreurs globales
+app.use((err, req, res, next) => {
+    console.error('Erreur non gérée:', err);
+    res.status(500).send('Erreur serveur interne');
+});
+
+// Route pour afficher le formulaire de création de ticket personnalisé (accessible à tous)
+app.get('/admin/create-ticket', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/html/create-ticket.html'));
+});
+
+// Route pour traiter la création du ticket personnalisé (accessible à tous)
+app.post('/admin/create-ticket', async (req, res) => {
+    try {
+        const { caller, reason, tags, status, isGLPI, createdAt, createdBy } = req.body;
+
+        const ticket = await Ticket.create({
+            caller,
+            reason: reason || '',
+            tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+            status: status || 'open',
+            isGLPI: isGLPI === 'true',
+            createdAt: createdAt ? new Date(createdAt) : new Date(),
+            createdBy: createdBy || 'Admin' // Utilise la valeur du formulaire ou une valeur par défaut
+        });
+
+        res.redirect('/'); // Redirigez l'utilisateur après la création
+    } catch (error) {
+        console.error('Erreur lors de la création du ticket:', error);
+        res.status(500).send('Erreur serveur');
     }
 });
 
 // Démarrage du serveur
 async function startServer() {
-    await initializeApp();
-    app.listen(port, () => {
-        console.log(`Serveur démarré sur http://localhost:${port}`);
-    });
+    try {
+        await sequelize.authenticate();
+        console.log('✅ Connexion à la base de données établie');
+
+        await sequelize.sync({ alter: true });
+        console.log('✅ Modèles synchronisés');
+
+        await fsPromises.mkdir(UPLOADS_DIR, { recursive: true });
+        console.log('✅ Dossier uploads vérifié');
+
+        // Vérifier l'existence des dossiers pour les fichiers statiques
+        await fsPromises.mkdir(path.join(__dirname, 'public/css'), { recursive: true });
+        await fsPromises.mkdir(path.join(__dirname, 'public/js/pages'), { recursive: true });
+        await fsPromises.mkdir(path.join(__dirname, 'public/img'), { recursive: true });
+        console.log('✅ Dossiers pour fichiers statiques vérifiés');
+
+        const VERSION = '2.0.6';
+        console.log(`🚀 Version du serveur : ${VERSION}`);
+        // Lancer un archivage initial au démarrage
+        archiveOldTickets().catch(err => console.error('Archivage initial échoué:', err));
+        app.listen(process.env.PORT, () => {
+            console.log(`✨ Serveur démarré sur http://localhost:${process.env.PORT}`);
+        });
+    } catch (error) {
+        console.error('❌ Erreur de démarrage:', error);
+        process.exit(1);
+    }
 }
 
-startServer().catch(console.error);
+// Démarrer le serveur
+startServer();
+
+module.exports = app;

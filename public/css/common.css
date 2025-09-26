@@ -1,0 +1,518 @@
+/* Styles communs pour toutes les pages de l'application */
+
+/* Imports des styles de thème */
+@import url('theme-override.css');
+@import url('floating-theme-button.css');
+@import url('ultra-smooth-theme-button.css');
+@import url('dark-mode-colors.css');
+@import url('advanced-theme-animations.css');
+
+/* Variables CSS pour les couleurs et transitions - Version moderne avec data-theme */
+:root {
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --success: #10b981;
+    --success-hover: #059669;
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+    
+    /* Variables communes */
+    --border-radius: 0.375rem;
+    --border-radius-lg: 0.5rem;
+    --spacing-unit: 1rem;
+}
+
+/* Thème clair (par défaut) */
+:root,
+[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    
+    --surface: #ffffff;
+    --surface-muted: #f8fafc;
+    --surface-hover: #f1f5f9;
+    --surface-selected: #e2e8f0;
+    
+    --border-primary: #e2e8f0;
+    --border-secondary: #cbd5e1;
+    --border-focus: var(--primary);
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Thème sombre */
+[data-theme="dark"] {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    
+    --surface: #1e293b;
+    --surface-muted: #334155;
+    --surface-hover: #475569;
+    --surface-selected: #64748b;
+    
+    --border-primary: #334155;
+    --border-secondary: #475569;
+    --border-focus: #60a5fa;
+    
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+}
+
+/* Support pour l'ancienne approche avec classes .dark */
+html.dark {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    
+    --surface: #1e293b;
+    --surface-muted: #334155;
+    --surface-hover: #475569;
+    --surface-selected: #64748b;
+    
+    --border-primary: #334155;
+    --border-secondary: #475569;
+    --border-focus: #60a5fa;
+    
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+}
+
+/* Styles de base avec nouvelle approche - Override Tailwind */
+html, body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    transition: background-color var(--transition-normal), color var(--transition-normal);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Override spécifique pour les classes Tailwind */
+body.bg-gray-100 {
+    background-color: var(--bg-primary) !important;
+}
+
+body.dark\:bg-gray-900,
+.dark body.bg-gray-100 {
+    background-color: var(--bg-primary) !important;
+}
+
+/* Fond global unifié */
+html {
+    color-scheme: light;
+}
+
+[data-theme="dark"], html.dark {
+    color-scheme: dark;
+}
+
+html[data-theme="light"] { color-scheme: light; }
+
+/* Animation de fade-in commune */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Styles pour les boutons avec nouvelles variables */
+.btn {
+    background-color: var(--surface);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+}
+
+.btn:hover {
+    background-color: var(--surface-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.btn:active {
+    transform: translateY(1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+/* Styles pour les champs de formulaire */
+.form-input {
+    background-color: var(--surface);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+}
+
+.form-input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    outline: none;
+}
+
+[data-theme="dark"] .form-input:focus {
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+
+/* Styles pour les conteneurs de carte */
+.card {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Override Tailwind pour les cartes */
+.bg-white {
+    background-color: var(--surface) !important;
+}
+
+.dark .bg-white,
+[data-theme="dark"] .bg-white {
+    background-color: var(--surface) !important;
+}
+
+/* Override pour le texte */
+.text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+
+.dark .text-white,
+[data-theme="dark"] .text-white {
+    color: var(--text-primary) !important;
+}
+
+/* Styles pour les tags avec nouvelles variables */
+.tag {
+    background-color: var(--surface-muted);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+    transition: all var(--transition-fast);
+}
+
+.tag:hover {
+    background-color: var(--surface-selected);
+}
+
+/* Styles pour les notifications */
+.notification {
+    animation: fadeIn var(--transition-normal);
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: var(--surface);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow);
+    z-index: 50;
+}
+
+.notification-success {
+    border-left: 4px solid var(--success);
+}
+
+.notification-error {
+    border-left: 4px solid var(--danger);
+}
+
+.notification-warning {
+    border-left: 4px solid var(--warning);
+}
+
+/* Styles pour les modals avec nouvelles variables */
+.modal {
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-normal), visibility var(--transition-normal);
+}
+
+.modal.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: var(--surface);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-xl);
+    transform: scale(0.9);
+    transition: transform var(--transition-normal);
+}
+
+.modal.visible .modal-content {
+    transform: scale(1);
+}
+
+/* Styles pour les spinners de chargement */
+.spinner {
+    border: 3px solid var(--border-primary);
+    border-radius: 50%;
+    border-top: 3px solid var(--primary);
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
+/* Styles pour les tooltips */
+.tooltip {
+    position: relative;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.5rem;
+    background-color: var(--surface-muted);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-fast), visibility var(--transition-fast);
+    z-index: 1000;
+}
+
+.tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.autocomplete-list {
+    position: absolute;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: var(--surface);
+    border: 1px solid var(--border-primary);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: var(--shadow);
+    z-index: 100;
+    display: none;
+}
+
+.autocomplete-list.show {
+    display: block;
+}
+
+.autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background-color var(--transition-fast);
+}
+
+.autocomplete-item:hover {
+    background-color: var(--surface-hover);
+}
+
+.autocomplete-item.selected {
+    background-color: var(--surface-selected);
+}
+
+[data-theme="dark"] .autocomplete-item.selected {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Styles pour le pied de page avec nouvelles variables */
+.footer {
+    margin-top: auto;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-primary);
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background-color: var(--surface);
+    animation: fadeIn 0.8s ease-out;
+    animation-delay: 0.6s;
+    opacity: 0;
+    animation-fill-mode: forwards;
+}
+
+.footer-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.version-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, color 0.3s ease;
+    margin-right: 0.75rem;
+}
+
+.version-badge:hover {
+    transform: translateY(-2px);
+    color: #3b82f6;
+}
+
+.dark .version-badge:hover {
+    color: #60a5fa;
+}
+
+.version-badge svg {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.25rem;
+}
+
+.developer-badge {
+    display: inline-flex;
+    align-items: center;
+}
+
+.developer-name {
+    font-weight: 500;
+    color: #3b82f6;
+}
+
+.dark .developer-name {
+    color: #60a5fa;
+}
+
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.3s ease;
+}
+
+.github-link:hover {
+    color: var(--primary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Classes utilitaires pour le thème */
+.theme-transition {
+    transition: background-color var(--transition-normal), 
+                color var(--transition-normal),
+                border-color var(--transition-normal);
+}
+
+/* Force l'application du thème sur tous les éléments */
+.theme-forced * {
+    background-color: inherit !important;
+    color: inherit !important;
+}
+
+.theme-forced .bg-white,
+.theme-forced .bg-gray-100,
+.theme-forced .bg-gray-50 {
+    background-color: var(--surface) !important;
+}
+
+.theme-forced .text-gray-900,
+.theme-forced .text-gray-800,
+.theme-forced .text-black {
+    color: var(--text-primary) !important;
+}
+
+.theme-forced .text-gray-600,
+.theme-forced .text-gray-500 {
+    color: var(--text-secondary) !important;
+}
+
+.theme-forced .border-gray-200,
+.theme-forced .border-gray-300 {
+    border-color: var(--border-primary) !important;
+}
+
+/* Amélioration de l'accessibilité */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+.dark .github-link:hover {
+    color: #60a5fa;
+} 
