@@ -201,8 +201,15 @@
                 
                 // Remplir les champs de date et heure de création
                 const creationDate = new Date(ticket.createdAt);
-                document.getElementById('creationDate').value = creationDate.toISOString().split('T')[0];
-                document.getElementById('creationTime').value = creationDate.toTimeString().slice(0, 5);
+                // Utiliser les méthodes locales pour éviter les problèmes de timezone
+                const year = creationDate.getFullYear();
+                const month = String(creationDate.getMonth() + 1).padStart(2, '0');
+                const day = String(creationDate.getDate()).padStart(2, '0');
+                const hours = String(creationDate.getHours()).padStart(2, '0');
+                const minutes = String(creationDate.getMinutes()).padStart(2, '0');
+                
+                document.getElementById('creationDate').value = `${year}-${month}-${day}`;
+                document.getElementById('creationTime').value = `${hours}:${minutes}`;
                 
                 // Afficher/masquer les champs GLPI
                 toggleGLPIFields(document.getElementById('isGLPI'));
