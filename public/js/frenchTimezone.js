@@ -3,21 +3,20 @@
  * Côté client (navigateur)
  */
 
-// Fonction utilitaire pour extraire les composants d'une date UTC en heure locale du client
+// Fonction utilitaire pour extraire les composants d'une date pour l'affichage local
 function extractFrenchComponents(utcDate) {
     const date = utcDate instanceof Date ? utcDate : new Date(utcDate);
     
-    // Utiliser directement l'heure locale du navigateur client
-    const localDate = new Date(date.toLocaleString());
-    
+    // Utiliser directement les composants locaux de la date
+    // JavaScript convertit automatiquement en heure locale du client
     return {
-        year: localDate.getFullYear(),
-        month: localDate.getMonth() + 1,
-        day: localDate.getDate(),
-        hours: localDate.getHours(),
-        minutes: localDate.getMinutes(),
-        formattedDate: `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`,
-        formattedTime: `${String(localDate.getHours()).padStart(2, '0')}:${String(localDate.getMinutes()).padStart(2, '0')}`
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        hours: date.getHours(),
+        minutes: date.getMinutes(),
+        formattedDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+        formattedTime: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     };
 }
 
