@@ -201,12 +201,12 @@
                 
                 // Remplir les champs de date et heure de création
                 const creationDate = new Date(ticket.createdAt);
-                // Extraire les composants UTC et les traiter comme heure locale
-                const year = creationDate.getUTCFullYear();
-                const month = String(creationDate.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(creationDate.getUTCDate()).padStart(2, '0');
-                const hours = String(creationDate.getUTCHours()).padStart(2, '0');
-                const minutes = String(creationDate.getUTCMinutes()).padStart(2, '0');
+                // Utiliser les méthodes locales normales maintenant que les dates sont correctes
+                const year = creationDate.getFullYear();
+                const month = String(creationDate.getMonth() + 1).padStart(2, '0');
+                const day = String(creationDate.getDate()).padStart(2, '0');
+                const hours = String(creationDate.getHours()).padStart(2, '0');
+                const minutes = String(creationDate.getMinutes()).padStart(2, '0');
                 
                 document.getElementById('creationDate').value = `${year}-${month}-${day}`;
                 document.getElementById('creationTime').value = `${hours}:${minutes}`;
