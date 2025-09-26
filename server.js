@@ -967,6 +967,24 @@ app.get('/admin/create-ticket', requireLogin, (req, res) => {
 app.post('/admin/create-ticket', async (req, res) => {
     try {
         const { caller, reason, tags, status, isGLPI, createdAt, createdBy } = req.body;
+        
+        let finalCreatedAt;
+        if (createdAt) {
+            // Traiter createdAt comme une date locale (pas UTC)
+            const dateObj = new Date(createdAt);
+            // Ajuster pour traiter comme heure locale
+            finalCreatedAt = new Date(dateObj.getTime() - dateObj.getTimezoneOffset() * 60000);
+        } else {
+            finalCreatedAt = new Date();
+        }
+        
+        logger.info('TICKET_CREATE', 'Creating new ticket', {
+            caller,
+            reason,
+            createdBy,
+            originalCreatedAt: createdAt,
+            finalCreatedAt: finalCreatedAt.toISOString()
+        });
 
         const ticket = await Ticket.create({
             caller,
@@ -974,13 +992,14 @@ app.post('/admin/create-ticket', async (req, res) => {
             tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
             status: status || 'open',
             isGLPI: isGLPI === 'true',
-            createdAt: createdAt ? new Date(createdAt) : new Date(),
+            createdAt: finalCreatedAt,
             createdBy: createdBy || 'Admin' // Utilise la valeur du formulaire ou une valeur par défaut
         });
 
+        logger.success('TICKET_CREATE', `Ticket created successfully: ${ticket.id}`);
         res.redirect('/'); // Redirigez l'utilisateur après la création
     } catch (error) {
-        console.error('Erreur lors de la création du ticket:', error);
+        logger.error('TICKET_CREATE', 'Failed to create ticket', error);
         res.status(500).send('Erreur serveur');
     }
 });
