@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Modifier Ticket</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-4">
+            <a href="/" class="text-blue-500 hover:underline">&larr; Retour</a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h1 class="text-2xl font-bold mb-6">Modifier le Ticket</h1>
+
+            <form action="/api/tickets/<%= ticket.id %>/edit" method="POST" class="space-y-4">
+                <!-- Option GLPI -->
+                <div class="flex items-center gap-2 mb-4">
+                    <input type="checkbox" 
+                           id="isGLPI" 
+                           name="isGLPI" 
+                           value="true"
+                           <%= ticket.isGLPI ? 'checked' : '' %>
+                           class="rounded"
+                           onchange="toggleGLPIFields(this)">
+                    <label for="isGLPI" class="text-sm font-medium">
+                        Ticket GLPI
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1">Appelant</label>
+                    <input type="text" 
+                           name="caller" 
+                           value="<%= ticket.caller %>"
+                           required 
+                           list="callers"
+                           class="w-full p-2 border rounded">
+                    <datalist id="callers">
+                        <% savedFields.callers.forEach(caller => { %>
+                            <option value="<%= caller %>">
+                        <% }) %>
+                    </datalist>
+                </div>
+
+                <div class="non-glpi-field" <%= ticket.isGLPI ? 'style="display: none;"' : '' %>>
+                    <label class="block text-sm font-medium mb-1">Raison</label>
+                    <input type="text" 
+                           name="reason" 
+                           value="<%= ticket.reason %>"
+                           list="reasons"
+                           class="w-full p-2 border rounded">
+                    <datalist id="reasons">
+                        <% savedFields.reasons.forEach(reason => { %>
+                            <option value="<%= reason %>">
+                        <% }) %>
+                    </datalist>
+                </div>
+
+                <div class="non-glpi-field" <%= ticket.isGLPI ? 'style="display: none;"' : '' %>>
+                    <label class="block text-sm font-medium mb-1">Tags</label>
+                    <input type="text" 
+                           name="tags" 
+                           value="<%= ticket.tags.join(', ') %>"
+                           placeholder="Séparez les tags par des virgules"
+                           class="w-full p-2 border rounded">
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <a href="/"
+                       class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                        Annuler
+                    </a>
+                    <button type="submit" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Enregistrer les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleGLPIFields(checkbox) {
+            const nonGLPIFields = document.querySelectorAll('.non-glpi-field');
+            nonGLPIFields.forEach(field => {
+                const inputs = field.querySelectorAll('input');
+                if (checkbox.checked) {
+                    field.style.display = 'none';
+                    inputs.forEach(input => input.required = false);
+                } else {
+                    field.style.display = 'block';
+                    inputs.forEach(input => input.required = true);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
