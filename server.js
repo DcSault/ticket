@@ -208,9 +208,12 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
 
         // Mise à jour de la date de création si spécifiée
         if (req.body.creationDate && req.body.creationTime) {
-            // Créer la date directement avec les valeurs du client
-            const dateTimeString = `${req.body.creationDate}T${req.body.creationTime}:00`;
-            const newCreatedAt = new Date(dateTimeString);
+            // Parser la date et l'heure séparément
+            const [year, month, day] = req.body.creationDate.split('-').map(num => parseInt(num));
+            const [hours, minutes] = req.body.creationTime.split(':').map(num => parseInt(num));
+            
+            // Créer la date avec le constructeur Date (mois - 1 car indexé à partir de 0)
+            const newCreatedAt = new Date(year, month - 1, day, hours, minutes, 0, 0);
             
             // Vérifier que la date est valide
             if (!isNaN(newCreatedAt.getTime())) {
