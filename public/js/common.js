@@ -10,18 +10,24 @@
 function formatDate(dateValue) {
     // Si la bibliothèque moment est disponible, l'utiliser
     if (typeof moment !== 'undefined') {
-        // Créer une date à partir de la valeur passée, sans appliquer de conversion de fuseau horaire
-        return moment(dateValue).format('D MMMM YYYY, HH:mm');
+        // Traiter la date comme étant en heure locale, pas UTC
+        return moment(dateValue).utc().format('D MMMM YYYY, HH:mm');
     } else {
         // Fallback si moment n'est pas disponible
         const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-        return date.toLocaleString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        
+        // Extraire les composants de la date UTC et les traiter comme heure locale
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth();
+        const day = date.getUTCDate();
+        const hours = String(date.getUTCHours()).padStart(2, '0');
+        const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+        
+        // Créer une date locale avec ces composants
+        const localDate = new Date(year, month, day);
+        const monthName = localDate.toLocaleString('fr-FR', { month: 'long' });
+        
+        return `${day} ${monthName} ${year}, ${hours}:${minutes}`;
     }
 }
 
