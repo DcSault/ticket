@@ -10,21 +10,24 @@
 function formatDate(dateValue) {
     // Si la bibliothèque moment est disponible, l'utiliser
     if (typeof moment !== 'undefined') {
-        // Utiliser moment normalement
-        return moment(dateValue).format('D MMMM YYYY, HH:mm');
+        // Utiliser moment et traiter comme UTC pour éviter les conversions
+        return moment.utc(dateValue).format('D MMMM YYYY, HH:mm');
     } else {
         // Fallback si moment n'est pas disponible
         const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
         
-        // Utiliser toLocaleString normalement mais avec les bonnes options
-        return date.toLocaleString('fr-FR', {
-            year: 'numeric',
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Europe/Paris' // Spécifier explicitement le timezone
-        });
+        // Utiliser les composants UTC mais les afficher comme heure locale
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth();
+        const day = date.getUTCDate();
+        const hours = String(date.getUTCHours()).padStart(2, '0');
+        const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+        
+        // Créer une date locale avec ces composants pour obtenir le nom du mois
+        const localDate = new Date(year, month, day);
+        const monthName = localDate.toLocaleString('fr-FR', { month: 'long' });
+        
+        return `${day} ${monthName} ${year}, ${hours}:${minutes}`;
     }
 }
 
