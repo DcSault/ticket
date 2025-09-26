@@ -235,18 +235,20 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
                 hasCreationTime: !!req.body.creationTime
             });
             
-            // Construire la date comme on le fait dans la création
-            const dateTimeString = `${req.body.creationDate}T${req.body.creationTime}:00`;
-            const tempDate = new Date(dateTimeString);
+            // Construire la date directement sans conversion de timezone
+            const [year, month, day] = req.body.creationDate.split('-').map(num => parseInt(num, 10));
+            const [hours, minutes] = req.body.creationTime.split(':').map(num => parseInt(num, 10));
             
-            // Ajuster pour traiter comme heure locale (même logique que la création)
-            const newCreatedAt = new Date(tempDate.getTime() - tempDate.getTimezoneOffset() * 60000);
+            // Créer une date UTC directement avec les valeurs saisies
+            const newCreatedAt = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
             
             logger.debug('TICKET_EDIT', `Constructed date for ticket ${ticketId}`, {
                 originalDate: originalData.createdAt,
-                dateTimeString: dateTimeString,
-                tempDate: tempDate.toISOString(),
-                timezoneOffset: tempDate.getTimezoneOffset(),
+                inputYear: year,
+                inputMonth: month,
+                inputDay: day,
+                inputHours: hours,
+                inputMinutes: minutes,
                 newDate: newCreatedAt.toISOString(),
                 isValid: !isNaN(newCreatedAt.getTime())
             });
@@ -986,10 +988,16 @@ app.post('/admin/create-ticket', async (req, res) => {
         
         let finalCreatedAt;
         if (createdAt) {
-            // Traiter createdAt comme une date locale (pas UTC)
+            // Traiter createdAt directement comme UTC
             const dateObj = new Date(createdAt);
-            // Ajuster pour traiter comme heure locale
-            finalCreatedAt = new Date(dateObj.getTime() - dateObj.getTimezoneOffset() * 60000);
+            finalCreatedAt = new Date(Date.UTC(
+                dateObj.getFullYear(),
+                dateObj.getMonth(),
+                dateObj.getDate(),
+                dateObj.getHours(),
+                dateObj.getMinutes(),
+                dateObj.getSeconds()
+            ));
         } else {
             finalCreatedAt = new Date();
         }
