@@ -134,6 +134,7 @@
 
     <!-- Scripts communs -->
     <script src="/js/common.js"></script>
+    <script src="/js/frenchTimezone.js"></script>
     <script src="/js/ticketFunctions.js"></script>
     <script src="/js/formFunctions.js"></script>
     <script src="/js/apiClient.js"></script>
@@ -199,17 +200,15 @@
                     document.getElementById('glpiNumber').value = ticket.glpiNumber;
                 }
                 
-                // Remplir les champs de date et heure de création
-                const creationDate = new Date(ticket.createdAt);
-                // Utiliser les méthodes UTC pour extraire les valeurs exactes stockées
-                const year = creationDate.getUTCFullYear();
-                const month = String(creationDate.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(creationDate.getUTCDate()).padStart(2, '0');
-                const hours = String(creationDate.getUTCHours()).padStart(2, '0');
-                const minutes = String(creationDate.getUTCMinutes()).padStart(2, '0');
+                // Remplir les champs de date et heure de création avec le timezone français
+                const components = extractFrenchComponents(ticket.createdAt);
                 
-                document.getElementById('creationDate').value = `${year}-${month}-${day}`;
-                document.getElementById('creationTime').value = `${hours}:${minutes}`;
+                document.getElementById('creationDate').value = components.formattedDate;
+                document.getElementById('creationTime').value = components.formattedTime;
+                
+                // Afficher les informations de timezone pour debug
+                const tzInfo = getFrenchTimezoneInfo();
+                console.log('Timezone français actuel:', tzInfo);
                 
                 // Afficher/masquer les champs GLPI
                 toggleGLPIFields(document.getElementById('isGLPI'));

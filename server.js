@@ -17,6 +17,9 @@ const { Op } = require('sequelize');
 // Import du logger persistant
 const logger = require('./utils/logger');
 
+// Import du système de timezone français
+const frenchTZ = require('./utils/frenchTimezone');
+
 
 // Import des modèles
 const { sequelize, User, Ticket, Message, SavedField } = require('./models');
@@ -148,11 +151,13 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
         const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
         
         // Log des informations de création
-        const now = new Date();
-        logger.info('TICKET_CREATE', 'Creating ticket with automatic timestamp', {
-            systemTime: now.toISOString(),
-            systemLocalTime: now.toString(),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        const now = frenchTZ.now();
+        const tzInfo = frenchTZ.getTimezoneInfo(now);
+        
+        logger.info('TICKET_CREATE', 'Creating ticket with French timezone', {
+            systemTime: new Date().toISOString(),
+            frenchTime: frenchTZ.format(new Date()),
+            timezoneInfo: tzInfo
         });
         
         const ticket = await Ticket.create({
@@ -230,25 +235,19 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         if (req.body.creationDate && req.body.creationTime) {
             logger.info('TICKET_EDIT', `Processing date/time update for ticket ${ticketId}`, {
                 creationDate: req.body.creationDate,
-                creationTime: req.body.creationTime,
-                hasCreationDate: !!req.body.creationDate,
-                hasCreationTime: !!req.body.creationTime
+                creationTime: req.body.creationTime
             });
             
-            // Construire la date directement sans conversion de timezone
-            const [year, month, day] = req.body.creationDate.split('-').map(num => parseInt(num, 10));
-            const [hours, minutes] = req.body.creationTime.split(':').map(num => parseInt(num, 10));
+            // Créer la date directement avec les valeurs du client
+            // Le client s'occupe de son timezone local
+            const dateTimeString = `${req.body.creationDate}T${req.body.creationTime}:00`;
+            const newCreatedAt = new Date(dateTimeString);
             
-            // Créer une date UTC directement avec les valeurs saisies
-            const newCreatedAt = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-            
-            logger.debug('TICKET_EDIT', `Constructed date for ticket ${ticketId}`, {
+            logger.debug('TICKET_EDIT', `Date created from client timezone for ticket ${ticketId}`, {
                 originalDate: originalData.createdAt,
-                inputYear: year,
-                inputMonth: month,
-                inputDay: day,
-                inputHours: hours,
-                inputMinutes: minutes,
+                inputDate: req.body.creationDate,
+                inputTime: req.body.creationTime,
+                dateTimeString: dateTimeString,
                 newDate: newCreatedAt.toISOString(),
                 isValid: !isNaN(newCreatedAt.getTime())
             });
@@ -988,16 +987,8 @@ app.post('/admin/create-ticket', async (req, res) => {
         
         let finalCreatedAt;
         if (createdAt) {
-            // Traiter createdAt directement comme UTC
-            const dateObj = new Date(createdAt);
-            finalCreatedAt = new Date(Date.UTC(
-                dateObj.getFullYear(),
-                dateObj.getMonth(),
-                dateObj.getDate(),
-                dateObj.getHours(),
-                dateObj.getMinutes(),
-                dateObj.getSeconds()
-            ));
+            // Utiliser directement la date du client
+            finalCreatedAt = new Date(createdAt);
         } else {
             finalCreatedAt = new Date();
         }
@@ -1052,10 +1043,20 @@ async function startServer() {
         archiveOldTickets().catch(err => logger.error('STARTUP', 'Archivage initial échoué', err));
         
         app.listen(process.env.PORT, () => {
+            const tzInfo = frenchTZ.getTimezoneInfo();
+            const now = frenchTZ.now();
+            
             logger.success('STARTUP', `Serveur démarré sur http://localhost:${process.env.PORT}`);
+            logger.info('STARTUP', 'Système de timezone français activé', {
+                timezone: tzInfo.timeZone,
+                season: tzInfo.season,
+                offset: tzInfo.offsetString,
+                currentTime: frenchTZ.format(now),
+                isDST: tzInfo.isDST
+            });
             logger.info('STARTUP', 'Système de logging persistant activé', {
                 logsDirectory: './logs/',
-                categories: ['STARTUP', 'TICKET_EDIT', 'API', 'ERROR']
+                categories: ['STARTUP', 'TICKET_EDIT', 'TICKET_CREATE', 'API', 'ERROR']
             });
         });
     } catch (error) {
