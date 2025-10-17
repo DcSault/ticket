@@ -276,9 +276,10 @@
             setupAutocomplete('reason', savedFields.reasons || []);
             setupAutocomplete('tags', savedFields.tags || [], true);
             
-            // Charger et afficher les tickets actifs
-            const tickets = await fetchActiveTickets();
-            renderActiveTickets(tickets);
+            // ✅ Utiliser loadTickets() qui est dans pages/index.js
+            if (typeof loadTickets === 'function') {
+                await loadTickets();
+            }
             
             // Configurer la soumission du formulaire
             const ticketForm = document.getElementById('ticketForm');

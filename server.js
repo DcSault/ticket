@@ -36,14 +36,14 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
             scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'"],
-            formAction: ["'self'"],  // ✅ Autorise l'envoi de formulaires vers le même domaine
-            fontSrc: ["'self'", "data:"],
+            connectSrc: ["'self'", "cdn.jsdelivr.net"],  // ✅ Autorise CDN pour sourcemaps
+            formAction: ["'self'"],
+            fontSrc: ["'self'", "data:", "cdn.jsdelivr.net", "https://r2cdn.perplexity.ai"],  // ✅ Autorise fonts externes
             objectSrc: ["'none'"],
             upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
         }
     },
-    crossOriginOpenerPolicy: false, // ✅ Désactive COOP pour éviter les warnings en HTTP
+    crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 

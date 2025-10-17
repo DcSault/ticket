@@ -4,14 +4,17 @@
 
 /**
  * Affiche les tickets actifs dans un conteneur
- * @param {Array} tickets - Liste des tickets à afficher
+ * @param {Array|Object} ticketsData - Liste des tickets à afficher ou objet {tickets: [], pagination: {}}
  * @param {string} containerId - ID du conteneur où afficher les tickets
  */
-function renderActiveTickets(tickets, containerId = 'ticketsContainer') {
+function renderActiveTickets(ticketsData, containerId = 'ticketsContainer') {
     const container = document.getElementById(containerId);
     if (!container) return;
     
     container.innerHTML = '';
+    
+    // ✅ Gère les deux formats: Array ou {tickets: [], pagination: {}}
+    const tickets = Array.isArray(ticketsData) ? ticketsData : (ticketsData.tickets || []);
     
     if (!tickets || tickets.length === 0) {
         const emptyDiv = document.createElement('div');
