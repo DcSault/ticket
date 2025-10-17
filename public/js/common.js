@@ -3,15 +3,15 @@
  */
 
 /**
- * Formate une date en format français
+ * Formate une date en format français avec le bon fuseau horaire
  * @param {string|Date} dateValue - La date à formater
  * @returns {string} - La date formatée
  */
 function formatDate(dateValue) {
-    // Si la bibliothèque moment est disponible, l'utiliser
+    // Si la bibliothèque moment est disponible, l'utiliser avec le fuseau horaire Europe/Paris
     if (typeof moment !== 'undefined') {
-        // Créer une date à partir de la valeur passée, sans appliquer de conversion de fuseau horaire
-        return moment(dateValue).format('D MMMM YYYY, HH:mm');
+        // Créer une date moment dans le fuseau Europe/Paris
+        return moment.utc(dateValue).tz('Europe/Paris').format('D MMMM YYYY, HH:mm');
     } else {
         // Fallback si moment n'est pas disponible
         const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
@@ -20,7 +20,8 @@ function formatDate(dateValue) {
             month: 'long',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: 'Europe/Paris'
         });
     }
 }

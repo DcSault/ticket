@@ -9,6 +9,8 @@
 function toggleGLPIFields(checkbox) {
     const nonGLPIFields = document.querySelectorAll('.non-glpi-field');
     const glpiNumberField = document.getElementById('glpiNumberField');
+    const glpiNumberInput = document.getElementById('glpiNumber');
+    
     nonGLPIFields.forEach(field => {
         const inputs = field.querySelectorAll('input');
         if (checkbox.checked) {
@@ -19,8 +21,12 @@ function toggleGLPIFields(checkbox) {
             inputs.forEach(input => input.required = true);
         }
     });
+    
     if (glpiNumberField) {
         glpiNumberField.classList.toggle('hidden', !checkbox.checked);
+        if (glpiNumberInput) {
+            glpiNumberInput.required = checkbox.checked;
+        }
     }
 }
 
@@ -38,15 +44,20 @@ function archiveTicket(id, redirectUrl = '/') {
             }
         })
         .then(response => {
-            if (response.ok) {
-                window.location.href = redirectUrl;
-            } else {
+            if (!response.ok) {
                 throw new Error('Erreur lors de l\'archivage du ticket');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('Ticket archivé avec succès', 'success');
+                window.location.href = redirectUrl;
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            showNotification('Erreur lors de l\'archivage du ticket', 'error');
+            showNotification(error.message || 'Erreur lors de l\'archivage du ticket', 'error');
         });
     }
 }
@@ -151,15 +162,20 @@ function deleteSavedField(field, value) {
             body: data
         })
         .then(response => {
-            if (response.ok) {
-                window.location.reload();
-            } else {
+            if (!response.ok) {
                 throw new Error('Erreur lors de la suppression du champ');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('Champ supprimé avec succès', 'success');
+                window.location.reload();
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            showNotification('Erreur lors de la suppression du champ', 'error');
+            showNotification(error.message || 'Erreur lors de la suppression du champ', 'error');
         });
     }
 }
@@ -178,15 +194,20 @@ function deleteTicket(id, redirectUrl = '/') {
             }
         })
         .then(response => {
-            if (response.ok) {
-                window.location.href = redirectUrl;
-            } else {
+            if (!response.ok) {
                 throw new Error('Erreur lors de la suppression du ticket');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('Ticket supprimé avec succès', 'success');
+                window.location.href = redirectUrl;
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            showNotification('Erreur lors de la suppression du ticket', 'error');
+            showNotification(error.message || 'Erreur lors de la suppression du ticket', 'error');
         });
     }
 } 

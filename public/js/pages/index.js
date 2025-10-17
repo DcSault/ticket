@@ -6,51 +6,13 @@
 // toggleGLPIFields est fourni par /js/ticketFunctions.js
 
 // Affichage/masquage des champs mémorisés
-function toggleSavedFields() {
-    const section = document.getElementById('savedFieldsSection');
-    const icon = document.getElementById('savedFieldsIcon');
-    const buttonText = document.getElementById('savedFieldsButtonText');
-    
-    if (section.classList.contains('hidden')) {
-        section.classList.remove('hidden');
-        icon.classList.add('rotate-180');
-        buttonText.textContent = 'Masquer les champs mémorisés';
-    } else {
-        section.classList.add('hidden');
-        icon.classList.remove('rotate-180');
-        buttonText.textContent = 'Afficher les champs mémorisés';
-    }
-}
+// toggleSavedFields est fourni par /js/ticketFunctions.js
 
 // Archivage d'un ticket
-function archiveTicket(id) {
-    if (confirm('Voulez-vous archiver cet appel ?')) {
-        fetch(`/api/tickets/${id}/archive`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }).then(() => window.location.reload());
-    }
-}
+// archiveTicket est fourni par /js/ticketFunctions.js
 
 // Suppression d'un champ mémorisé
-function deleteSavedField(field, value) {
-    if (confirm(`Voulez-vous supprimer "${value}" des ${field === 'caller' ? 'appelants' : field === 'reason' ? 'raisons' : 'tags'} mémorisés ?`)) {
-        // Utiliser URLSearchParams au lieu de FormData pour envoyer les données
-        const data = new URLSearchParams();
-        data.append('field', field);
-        data.append('value', value);
-        
-        fetch('/api/saved-fields/delete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: data
-        }).then(() => window.location.reload());
-    }
-}
+// deleteSavedField est fourni par /js/ticketFunctions.js
 
 // Variables globales pour stocker les statistiques d'utilisation
 let usageStats = {
@@ -317,8 +279,91 @@ async function initQuickChoiceButtons() {
     }
 }
 
+// Charger et afficher les tickets actifs
+async function loadTickets() {
+    try {
+        const data = await fetchActiveTickets();
+        
+        // Gérer la nouvelle structure avec pagination
+        const tickets = data.tickets || data;
+        
+        displayTickets(tickets);
+    } catch (error) {
+        console.error('Erreur lors du chargement des tickets:', error);
+        const container = document.getElementById('ticketsContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="text-red-500 dark:text-red-400 text-center py-8">
+                    <p class="mb-2">❌ Erreur lors du chargement des tickets</p>
+                    <button onclick="loadTickets()" class="text-sm underline">Réessayer</button>
+                </div>
+            `;
+        }
+    }
+}
+
+// Afficher les tickets dans le container
+function displayTickets(tickets) {
+    const container = document.getElementById('ticketsContainer');
+    if (!container) return;
+    
+    if (!tickets || tickets.length === 0) {
+        container.innerHTML = `
+            <div class="text-gray-500 dark:text-gray-400 text-center py-8">
+                ✨ Aucun ticket actif
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = tickets.map(ticket => {
+        const tagsHTML = ticket.tags && ticket.tags.length > 0 ? `
+            <div class="flex flex-wrap gap-2 mt-2">
+                ${ticket.tags.map(tag => `
+                    <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm">
+                        ${tag}
+                    </span>
+                `).join('')}
+            </div>
+        ` : '';
+        
+        return `
+            <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:shadow-lg transition-shadow bg-white dark:bg-gray-800">
+                <div class="flex justify-between items-start gap-4">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                            ${ticket.caller}
+                            ${ticket.isBlocking ? '<span class="text-red-500 text-xl" title="Bloquant">🔴</span>' : ''}
+                        </h3>
+                        <p class="text-gray-600 dark:text-gray-400 mt-1">
+                            ${ticket.isGLPI ? `<strong>GLPI #${ticket.glpiNumber}</strong>` : ticket.reason || 'Aucune raison spécifiée'}
+                        </p>
+                        ${tagsHTML}
+                        <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                            Créé ${formatDate(ticket.createdAt)} par ${ticket.createdBy}
+                        </p>
+                    </div>
+                    <div class="flex flex-col gap-2 flex-shrink-0">
+                        <a href="/ticket/${ticket.id}" 
+                           class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-center whitespace-nowrap transition-colors">
+                            📄 Voir
+                        </a>
+                        <button onclick="archiveTicket('${ticket.id}'); return false;" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded whitespace-nowrap transition-colors">
+                            ✅ Archiver
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 // Autocomplétion pour les champs
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Charger les tickets actifs
+    await loadTickets();
+    
     // Récupérer les champs mémorisés
     fetch('/api/saved-fields')
         .then(response => response.json())
@@ -336,6 +381,39 @@ document.addEventListener('DOMContentLoaded', function() {
             // Initialiser quand même les boutons de choix rapide en cas d'erreur
             initQuickChoiceButtons();
         });
+    
+    // Recharger les tickets après création
+    const ticketForm = document.getElementById('ticketForm');
+    if (ticketForm) {
+        ticketForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(ticketForm);
+            const ticketData = {
+                caller: formData.get('caller'),
+                reason: formData.get('reason'),
+                tags: formData.get('tags'),
+                isGLPI: formData.get('isGLPI') === 'true',
+                glpiNumber: formData.get('glpiNumber'),
+                isBlocking: formData.get('isBlocking') === 'true'
+            };
+            
+            try {
+                showNotification('Création du ticket...', 'info');
+                await createTicket(ticketData);
+                showNotification('✅ Ticket créé avec succès !', 'success');
+                
+                // Réinitialiser le formulaire
+                ticketForm.reset();
+                
+                // Recharger les tickets
+                await loadTickets();
+            } catch (error) {
+                // L'erreur est déjà gérée par createTicket()
+                console.error('Erreur création ticket:', error);
+            }
+        });
+    }
 });
 
 // Configuration de l'autocomplétion pour un champ

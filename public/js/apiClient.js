@@ -22,7 +22,7 @@ async function fetchCurrentUser() {
 
 /**
  * Récupère la liste des tickets actifs
- * @returns {Promise<Array>} - Promesse résolue avec la liste des tickets
+ * @returns {Promise<Object>} - Promesse résolue avec {tickets: Array, pagination: Object}
  */
 async function fetchActiveTickets() {
     try {
@@ -30,11 +30,15 @@ async function fetchActiveTickets() {
         if (!response.ok) {
             throw new Error('Erreur lors de la récupération des tickets');
         }
-        return await response.json();
+        const data = await response.json();
+        
+        // Retourner la structure complète {tickets, pagination}
+        // ou juste un tableau pour rétrocompatibilité
+        return data.tickets ? data : { tickets: data, pagination: null };
     } catch (error) {
         console.error('Erreur:', error);
         showNotification('Erreur lors de la récupération des tickets', 'error');
-        return [];
+        return { tickets: [], pagination: null };
     }
 }
 
@@ -127,19 +131,15 @@ async function createTicket(ticketData) {
         });
         
         if (!response.ok) {
-            throw new Error('Erreur lors de la création du ticket');
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erreur lors de la création du ticket');
         }
         
-        // Si le serveur a redirigé (soumission via formulaire), gérer la redirection
-        if (response.redirected) {
-            window.location.href = response.url;
-            return null;
-        }
         return await response.json();
     } catch (error) {
         console.error('Erreur:', error);
-        showNotification('Erreur lors de la création du ticket', 'error');
-        return null;
+        showNotification(error.message || 'Erreur lors de la création du ticket', 'error');
+        throw error;
     }
 }
 
@@ -147,7 +147,7 @@ async function createTicket(ticketData) {
  * Met à jour un ticket existant
  * @param {string} ticketId - ID du ticket à mettre à jour
  * @param {Object} ticketData - Nouvelles données du ticket
- * @returns {Promise<boolean>} - Promesse résolue avec true si la mise à jour a réussi
+ * @returns {Promise<Object>} - Promesse résolue avec le ticket mis à jour
  */
 async function updateTicket(ticketId, ticketData) {
     try {
@@ -160,15 +160,15 @@ async function updateTicket(ticketId, ticketData) {
         });
         
         if (!response.ok) {
-            throw new Error('Erreur lors de la mise à jour du ticket');
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erreur lors de la mise à jour du ticket');
         }
         
-        // Le serveur renvoie une redirection, pas du JSON
-        return true;
+        return await response.json();
     } catch (error) {
         console.error('Erreur:', error);
-        showNotification('Erreur lors de la mise à jour du ticket', 'error');
-        return false;
+        showNotification(error.message || 'Erreur lors de la mise à jour du ticket', 'error');
+        throw error;
     }
 }
 
@@ -225,5 +225,133 @@ async function addImageMessage(ticketId, imageFile) {
         console.error('Erreur:', error);
         showNotification('Erreur lors de l\'ajout de l\'image', 'error');
         return null;
+    }
+}
+
+/**
+ * Récupère les statistiques globales
+ * @returns {Promise<Object>} - Promesse résolue avec les données statistiques
+ */
+async function fetchStats() {
+    try {
+        const response = await fetch('/api/stats');
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération des statistiques');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors de la récupération des statistiques', 'error');
+        return null;
+    }
+}
+
+/**
+ * Récupère les données de rapport pour une date donnée
+ * @param {string} date - Date au format YYYY-MM-DD
+ * @returns {Promise<Object>} - Promesse résolue avec les données du rapport
+ */
+async function fetchReportData(date) {
+    try {
+        const response = await fetch(`/api/report-data?date=${date}`);
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération du rapport');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors de la récupération du rapport', 'error');
+        return null;
+    }
+}
+
+/**
+ * Récupère la liste des utilisateurs
+ * @returns {Promise<Array>} - Promesse résolue avec la liste des utilisateurs
+ */
+async function fetchUsers() {
+    try {
+        const response = await fetch('/api/users');
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération des utilisateurs');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors de la récupération des utilisateurs', 'error');
+        return [];
+    }
+}
+
+/**
+ * Récupère les détails d'une archive
+ * @param {string} archiveId - ID de l'archive
+ * @returns {Promise<Object>} - Promesse résolue avec les détails de l'archive
+ */
+async function fetchArchiveDetails(archiveId) {
+    try {
+        const response = await fetch(`/api/archives/${archiveId}/details`);
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération des détails de l\'archive');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors de la récupération des détails de l\'archive', 'error');
+        return null;
+    }
+}
+
+/**
+ * Archive un ticket
+ * @param {string} ticketId - ID du ticket à archiver
+ * @returns {Promise<Object>} - Promesse résolue avec la réponse du serveur
+ */
+async function archiveTicketAPI(ticketId) {
+    try {
+        const response = await fetch(`/api/tickets/${ticketId}/archive`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erreur lors de l\'archivage');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification(error.message || 'Erreur lors de l\'archivage du ticket', 'error');
+        throw error;
+    }
+}
+
+/**
+ * Supprime un ticket
+ * @param {string} ticketId - ID du ticket à supprimer
+ * @returns {Promise<Object>} - Promesse résolue avec la réponse du serveur
+ */
+async function deleteTicketAPI(ticketId) {
+    try {
+        const response = await fetch(`/api/tickets/${ticketId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erreur lors de la suppression');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification(error.message || 'Erreur lors de la suppression du ticket', 'error');
+        throw error;
     }
 } 

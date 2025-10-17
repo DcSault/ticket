@@ -12,6 +12,10 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const compression = require('compression');
+const NodeCache = require('node-cache');
 const { Op } = require('sequelize');
 
 
@@ -21,6 +25,42 @@ const { sequelize, User, Ticket, Message, SavedField } = require('./models');
 const app = express();
 const UPLOADS_DIR = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');
 
+// Cache pour les données fréquentes
+const savedFieldsCache = new NodeCache({ stdTTL: 600 }); // 10 minutes
+
+// Security Middleware
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'"]
+        }
+    }
+}));
+
+// Compression
+app.use(compression());
+
+// Rate Limiter pour login
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 tentatives
+    message: 'Trop de tentatives de connexion, réessayez dans 15 minutes',
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Rate Limiter général pour l'API
+const apiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 100, // 100 requêtes par minute
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 // Middleware Configuration
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -29,10 +69,17 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 // Fichiers statiques
 app.use(express.static('public'));
 
+// Session sécurisée
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // HTTPS only en production
+        httpOnly: true, // Pas accessible via JavaScript
+        maxAge: 24 * 60 * 60 * 1000, // 24 heures
+        sameSite: 'strict' // Protection CSRF
+    }
 }));
 
 // Les fichiers HTML sont servis via sendFile sur des routes dédiées
@@ -48,14 +95,22 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
     storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB max
+        files: 1
+    },
     fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        if (extname && mimetype) {
+        // Vérification stricte MIME type ET extension
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+        const allowedExts = /jpeg|jpg|png|gif/;
+        
+        const mimeOk = allowedMimes.includes(file.mimetype);
+        const extOk = allowedExts.test(path.extname(file.originalname).toLowerCase());
+        
+        if (mimeOk && extOk) {
             return cb(null, true);
         }
-        cb(new Error('Images only'));
+        cb(new Error('Type de fichier non autorisé. Seules les images JPEG, PNG et GIF sont acceptées.'));
     }
 });
 
@@ -98,7 +153,7 @@ app.get('/login', (req, res) => {
 });
 
 // Route API pour récupérer la liste des utilisateurs (pour l'autocomplétion)
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', requireLogin, async (req, res) => {
     try {
         const users = await User.findAll({
             attributes: ['username'],
@@ -111,7 +166,7 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
     const { username } = req.body;
     if (username?.trim()) {
         try {
@@ -142,6 +197,22 @@ app.get('/', requireLogin, (req, res) => {
 // Routes des tickets
 app.post('/api/tickets', requireLogin, async (req, res) => {
     try {
+        // Validation pour les tickets non-GLPI
+        const isGLPI = req.body.isGLPI === 'true';
+        if (!isGLPI) {
+            if (!req.body.reason || !req.body.reason.trim()) {
+                return res.status(400).json({ error: 'La raison est requise pour les tickets non-GLPI' });
+            }
+            if (!req.body.tags || !req.body.tags.trim()) {
+                return res.status(400).json({ error: 'Au moins un tag est requis pour les tickets non-GLPI' });
+            }
+        } else {
+            // Validation pour les tickets GLPI
+            if (!req.body.glpiNumber || !req.body.glpiNumber.trim()) {
+                return res.status(400).json({ error: 'Le numéro GLPI est requis pour les tickets GLPI' });
+            }
+        }
+        
         const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
         
         const ticket = await Ticket.create({
@@ -161,16 +232,15 @@ app.post('/api/tickets', requireLogin, async (req, res) => {
                 req.body.reason && SavedField.findOrCreate({ where: { type: 'reason', value: req.body.reason }}),
                 ...tags.map(tag => SavedField.findOrCreate({ where: { type: 'tag', value: tag }}))
             ]);
+            // Invalider le cache après ajout de nouveaux champs
+            savedFieldsCache.del('all');
         }
 
-        // Par défaut on redirige (soumissions de formulaires). Si requête JSON, retourner JSON
-        if (req.is('application/json')) {
-            return res.status(201).json(ticket);
-        }
-        return res.redirect('/');
+        // Toujours retourner JSON pour les routes API
+        return res.status(201).json({ success: true, ticket });
     } catch (error) {
         console.error('Erreur création ticket:', error);
-        res.status(500).send('Erreur lors de la création du ticket');
+        res.status(500).json({ error: 'Erreur lors de la création du ticket' });
     }
 });
 
@@ -187,7 +257,23 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
         const ticket = await Ticket.findByPk(req.params.id);
         
         if (!ticket) {
-            return res.redirect('/');
+            return res.status(404).json({ error: 'Ticket non trouvé' });
+        }
+
+        // Validation pour les tickets non-GLPI
+        const isGLPI = req.body.isGLPI === 'true';
+        if (!isGLPI) {
+            if (!req.body.reason || !req.body.reason.trim()) {
+                return res.status(400).json({ error: 'La raison est requise pour les tickets non-GLPI' });
+            }
+            if (!req.body.tags || !req.body.tags.trim()) {
+                return res.status(400).json({ error: 'Au moins un tag est requis pour les tickets non-GLPI' });
+            }
+        } else {
+            // Validation pour les tickets GLPI
+            if (!req.body.glpiNumber || !req.body.glpiNumber.trim()) {
+                return res.status(400).json({ error: 'Le numéro GLPI est requis pour les tickets GLPI' });
+            }
         }
 
         const updatedData = {
@@ -217,13 +303,15 @@ app.post('/api/tickets/:id/edit', requireLogin, async (req, res) => {
                 SavedField.findOrCreate({ where: { type: 'caller', value: req.body.caller }}),
                 req.body.reason && SavedField.findOrCreate({ where: { type: 'reason', value: req.body.reason }})
             ]);
+            // Invalider le cache après ajout de nouveaux champs
+            savedFieldsCache.del('all');
         }
 
         await ticket.update(updatedData);
-        return res.redirect('/');
+        return res.json({ success: true, ticket });
     } catch (error) {
         console.error('Erreur modification ticket:', error);
-        res.status(500).send('Erreur lors de la modification du ticket');
+        res.status(500).json({ error: 'Erreur lors de la modification du ticket' });
     }
 });
 
@@ -248,10 +336,10 @@ app.post('/api/tickets/:id/delete', requireLogin, async (req, res) => {
             }
             await ticket.destroy();
         }
-        res.redirect('/');
+        res.json({ success: true });
     } catch (error) {
         console.error('Erreur suppression ticket:', error);
-        res.status(500).send('Erreur lors de la suppression du ticket');
+        res.status(500).json({ error: 'Erreur lors de la suppression du ticket' });
     }
 });
 
@@ -264,10 +352,10 @@ app.post('/api/tickets/:id/archive', requireLogin, async (req, res) => {
         }
 
         await ticket.update({ isArchived: true, archivedAt: new Date(), archivedBy: req.session.username });
-        res.redirect('/');
+        res.json({ success: true });
     } catch (error) {
         console.error('Erreur lors de l\'archivage:', error);
-        res.status(500).send('Erreur lors de l\'archivage');
+        res.status(500).json({ error: 'Erreur lors de l\'archivage' });
     }
 });
 
@@ -386,12 +474,12 @@ app.get('/api/archives/:id/details', requireLogin, async (req, res) => {
 });
 
 // Stats
-app.get('/stats', (req, res) => {
+app.get('/stats', requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/stats.html'));
 });
 
 // Route pour afficher la page de rapport
-app.get('/report', (req, res) => {
+app.get('/report', requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public/html/report.html'));
 });
 
@@ -401,7 +489,7 @@ app.get('/theme-test', (req, res) => {
 });
 
 // API pour les statistiques
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', requireLogin, async (req, res) => {
     try {
         // Filtres optionnels par date (from/to en ISO yyyy-mm-dd)
         const { from, to } = req.query;
@@ -430,7 +518,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // API pour les données de rapport
-app.get('/api/report-data', async (req, res) => {
+app.get('/api/report-data', requireLogin, async (req, res) => {
     try {
         const date = req.query.date ? new Date(req.query.date) : new Date();
         const reportData = await getReportStats(date);
@@ -593,10 +681,12 @@ app.post('/api/saved-fields/delete', requireLogin, async (req, res) => {
                 value: value
             }
         });
-        res.redirect('/');
+        // Invalider le cache après suppression
+        savedFieldsCache.del('all');
+        res.json({ success: true });
     } catch (error) {
         console.error('Erreur suppression champ:', error);
-        res.status(500).send('Erreur lors de la suppression');
+        res.status(500).json({ error: 'Erreur lors de la suppression' });
     }
 });
 
@@ -818,14 +908,31 @@ app.get('/api/user', requireLogin, (req, res) => {
     res.json({ username: req.session.username });
 });
 
-app.get('/api/tickets', requireLogin, async (req, res) => {
+app.get('/api/tickets', requireLogin, apiLimiter, async (req, res) => {
     try {
-        const tickets = await Ticket.findAll({
-            include: [Message],
+        // Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const offset = (page - 1) * limit;
+        
+        const { count, rows: tickets } = await Ticket.findAndCountAll({
             where: { isArchived: false },
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset,
+            // Ne pas inclure les messages ici pour optimiser
+            // Les messages seront chargés individuellement si nécessaire
         });
-        res.json(tickets);
+        
+        res.json({
+            tickets,
+            pagination: {
+                page,
+                limit,
+                total: count,
+                totalPages: Math.ceil(count / limit)
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la récupération des tickets:', error);
         res.status(500).json({ error: 'Erreur lors de la récupération des tickets' });
@@ -851,7 +958,15 @@ app.get('/api/tickets/:id', requireLogin, async (req, res) => {
 
 app.get('/api/saved-fields', requireLogin, async (req, res) => {
     try {
-        const savedFields = await SavedField.findAll();
+        // Vérifier le cache d'abord
+        let savedFields = savedFieldsCache.get('all');
+        
+        if (!savedFields) {
+            // Si pas en cache, charger depuis la DB
+            savedFields = await SavedField.findAll();
+            // Mettre en cache pour 10 minutes
+            savedFieldsCache.set('all', savedFields);
+        }
         
         res.json({
             callers: savedFields.filter(f => f.type === 'caller').map(f => f.value),
@@ -876,7 +991,7 @@ app.get('/admin/create-ticket', requireLogin, (req, res) => {
 });
 
 // Route pour traiter la création du ticket personnalisé (accessible à tous)
-app.post('/admin/create-ticket', async (req, res) => {
+app.post('/admin/create-ticket', requireLogin, async (req, res) => {
     try {
         const { caller, reason, tags, status, isGLPI, createdAt, createdBy } = req.body;
 
