@@ -36,9 +36,15 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
             scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'"]
+            connectSrc: ["'self'"],
+            formAction: ["'self'"],  // ✅ Autorise l'envoi de formulaires vers le même domaine
+            fontSrc: ["'self'", "data:"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
         }
-    }
+    },
+    crossOriginOpenerPolicy: false, // ✅ Désactive COOP pour éviter les warnings en HTTP
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // Compression
