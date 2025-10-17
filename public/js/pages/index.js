@@ -361,28 +361,55 @@ function displayTickets(tickets) {
 
 // Autocomplétion pour les champs
 document.addEventListener('DOMContentLoaded', async function() {
-    // Charger les tickets actifs
+    console.log('🚀 Initialisation de la page d\'accueil...');
+    
+    // 1. Initialiser les styles de formulaire
+    if (typeof initFormStyles === 'function') {
+        initFormStyles();
+    }
+    
+    // 2. Charger les données utilisateur
+    try {
+        const userData = await fetchCurrentUser();
+        if (userData && userData.username) {
+            const usernameEl = document.getElementById('username');
+            if (usernameEl) {
+                usernameEl.textContent = userData.username;
+            }
+        }
+    } catch (error) {
+        console.error('Erreur chargement user:', error);
+    }
+    
+    // 3. Charger les champs mémorisés
+    let savedFields = { callers: [], reasons: [], tags: [] };
+    try {
+        savedFields = await fetchSavedFields();
+        console.log('📝 Champs mémorisés chargés:', savedFields);
+        
+        // Afficher les champs mémorisés
+        if (typeof renderSavedFields === 'function') {
+            renderSavedFields(savedFields);
+        }
+    } catch (error) {
+        console.error('Erreur chargement saved fields:', error);
+    }
+    
+    // 4. Configurer l'autocomplétion
+    if (typeof setupAutocomplete === 'function') {
+        setupAutocomplete('caller', savedFields.callers || []);
+        setupAutocomplete('reason', savedFields.reasons || []);
+        setupAutocomplete('tags', savedFields.tags || [], true);
+        console.log('✅ Autocomplétion configurée');
+    }
+    
+    // 5. Initialiser les boutons de choix rapide
+    initQuickChoiceButtons();
+    
+    // 6. Charger les tickets actifs
     await loadTickets();
     
-    // Récupérer les champs mémorisés
-    fetch('/api/saved-fields')
-        .then(response => response.json())
-        .then(savedFields => {
-            // Configurer l'autocomplétion
-            setupAutocomplete('caller', savedFields.callers || []);
-            setupAutocomplete('reason', savedFields.reasons || []);
-            setupAutocomplete('tags', savedFields.tags || [], true);
-            
-            // Initialiser les boutons de choix rapide
-            initQuickChoiceButtons();
-        })
-        .catch(error => {
-            console.error('Erreur lors de la récupération des champs mémorisés:', error);
-            // Initialiser quand même les boutons de choix rapide en cas d'erreur
-            initQuickChoiceButtons();
-        });
-    
-    // Recharger les tickets après création
+    // 7. Gérer la soumission du formulaire
     const ticketForm = document.getElementById('ticketForm');
     if (ticketForm) {
         ticketForm.addEventListener('submit', async function(e) {
@@ -391,99 +418,46 @@ document.addEventListener('DOMContentLoaded', async function() {
             const formData = new FormData(ticketForm);
             const ticketData = {
                 caller: formData.get('caller'),
-                reason: formData.get('reason'),
-                tags: formData.get('tags'),
-                isGLPI: formData.get('isGLPI') === 'true',
-                glpiNumber: formData.get('glpiNumber'),
-                isBlocking: formData.get('isBlocking') === 'true'
+                reason: formData.get('reason') || '',
+                tags: formData.get('tags') || '',
+                isGLPI: formData.get('isGLPI') === 'true' || formData.get('isGLPI') === 'on',
+                glpiNumber: formData.get('glpiNumber') || '',
+                isBlocking: formData.get('isBlocking') === 'true' || formData.get('isBlocking') === 'on'
             };
             
             try {
                 showNotification('Création du ticket...', 'info');
-                await createTicket(ticketData);
-                showNotification('✅ Ticket créé avec succès !', 'success');
+                const result = await createTicket(ticketData);
                 
-                // Réinitialiser le formulaire
-                ticketForm.reset();
-                
-                // Recharger les tickets
-                await loadTickets();
+                if (result && result.success) {
+                    showNotification('✅ Ticket créé avec succès !', 'success');
+                    
+                    // Réinitialiser le formulaire
+                    ticketForm.reset();
+                    
+                    // Recharger les tickets
+                    await loadTickets();
+                    
+                    // Recharger les champs mémorisés
+                    try {
+                        const newSavedFields = await fetchSavedFields();
+                        if (typeof renderSavedFields === 'function') {
+                            renderSavedFields(newSavedFields);
+                        }
+                    } catch (error) {
+                        console.error('Erreur rechargement saved fields:', error);
+                    }
+                }
             } catch (error) {
-                // L'erreur est déjà gérée par createTicket()
                 console.error('Erreur création ticket:', error);
+                showNotification('❌ Erreur lors de la création du ticket', 'error');
             }
         });
     }
+    
+    console.log('✅ Page d\'accueil initialisée avec succès');
 });
 
-// Configuration de l'autocomplétion pour un champ
-function setupAutocomplete(fieldId, suggestions, isMultiple = false) {
-    const input = document.getElementById(fieldId);
-    if (!input || !suggestions.length) return;
-    
-    // Créer la liste d'autocomplétion
-    let autocompleteList = document.createElement('div');
-    autocompleteList.className = 'autocomplete-list';
-    autocompleteList.id = `${fieldId}-autocomplete`;
-    input.parentNode.style.position = 'relative';
-    input.parentNode.appendChild(autocompleteList);
-    
-    // Événement d'entrée dans le champ
-    input.addEventListener('input', function() {
-        const value = this.value.toLowerCase();
-        let currentValues = [];
-        
-        // Pour les champs multiples (comme les tags), on sépare par virgule
-        if (isMultiple && value.includes(',')) {
-            const parts = value.split(',');
-            const currentValue = parts[parts.length - 1].trim().toLowerCase();
-            currentValues = parts.slice(0, parts.length - 1).map(p => p.trim().toLowerCase());
-            updateAutocompleteList(currentValue, suggestions.filter(s => !currentValues.includes(s.toLowerCase())));
-        } else {
-            updateAutocompleteList(value, suggestions);
-        }
-    });
-    
-    // Mise à jour de la liste d'autocomplétion
-    function updateAutocompleteList(value, suggestions) {
-        autocompleteList.innerHTML = '';
-        autocompleteList.style.display = 'none';
-        
-        if (!value) return;
-        
-        const matchingSuggestions = suggestions.filter(s => 
-            s.toLowerCase().includes(value)
-        );
-        
-        if (matchingSuggestions.length > 0) {
-            matchingSuggestions.forEach(suggestion => {
-                const item = document.createElement('div');
-                item.className = 'autocomplete-item';
-                item.textContent = suggestion;
-                item.addEventListener('click', function() {
-                    if (isMultiple) {
-                        const parts = input.value.split(',');
-                        parts[parts.length - 1] = ` ${suggestion}`;
-                        input.value = parts.join(',');
-                        if (parts.length < suggestions.length) {
-                            input.value += ', ';
-                        }
-                    } else {
-                        input.value = suggestion;
-                    }
-                    autocompleteList.style.display = 'none';
-                    input.focus();
-                });
-                autocompleteList.appendChild(item);
-            });
-            autocompleteList.style.display = 'block';
-        }
-    }
-    
-    // Fermer la liste quand on clique ailleurs
-    document.addEventListener('click', function(e) {
-        if (e.target !== input) {
-            autocompleteList.style.display = 'none';
-        }
-    });
-} 
+// ✅ La fonction setupAutocomplete() est maintenant dans formFunctions.js
+// Plus besoin de la redéfinir ici
+ 

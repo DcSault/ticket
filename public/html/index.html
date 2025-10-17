@@ -242,7 +242,7 @@
     
     <!-- Script spécifique à la page -->
     <script>
-        // Fonctions pour les modales
+        // Fonctions pour les modales (utilisées par les boutons HTML)
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
@@ -257,58 +257,8 @@
             }
         }
         
-        // Initialisation de la page
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Initialiser les styles de formulaire
-            initFormStyles();
-            
-            // Charger les données
-            const userData = await fetchCurrentUser();
-            if (userData) {
-                document.getElementById('username').textContent = userData.username;
-            }
-            
-            const savedFields = await fetchSavedFields();
-            renderSavedFields(savedFields);
-            
-            // Configurer l'autocomplétion
-            setupAutocomplete('caller', savedFields.callers || []);
-            setupAutocomplete('reason', savedFields.reasons || []);
-            setupAutocomplete('tags', savedFields.tags || [], true);
-            
-            // ✅ Utiliser loadTickets() qui est dans pages/index.js
-            if (typeof loadTickets === 'function') {
-                await loadTickets();
-            }
-            
-            // Configurer la soumission du formulaire
-            const ticketForm = document.getElementById('ticketForm');
-            if (ticketForm) {
-                ticketForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    
-                    const formData = new FormData(ticketForm);
-                    const ticketData = {
-                        caller: formData.get('caller'),
-                        reason: formData.get('reason') || '',
-                        tags: formData.get('tags') || '',
-                        isGLPI: formData.get('isGLPI') === 'on' ? 'true' : 'false',
-                        isBlocking: formData.get('isBlocking') === 'on' ? 'true' : 'false',
-                        glpiNumber: formData.get('glpiNumber') || ''
-                    };
-                    
-                    try {
-                        const result = await createTicket(ticketData);
-                        if (result && result.success) {
-                            showNotification('Ticket créé avec succès', 'success');
-                            window.location.reload();
-                        }
-                    } catch (error) {
-                        // L'erreur est déjà gérée dans createTicket
-                    }
-                });
-            }
-        });
+        // ✅ Toute l'initialisation est maintenant dans pages/index.js
+        // Ce script ne contient que les fonctions globales pour les modales
     </script>
 </body>
 </html> 

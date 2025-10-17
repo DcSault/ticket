@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html class="dark:bg-gray-900">
+<head>
+    <title>Export Base de Données - CallFix</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Initialisation du thème -->
+    <script src="/js/theme-init.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <style>
+        .export-section {
+            transition: all 0.3s ease;
+        }
+        .export-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export Base de Données
+                </h1>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">
+                    Exportez l'intégralité de la base de données CallFix au format JSON
+                </p>
+            </div>
+            <a href="/" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Retour à l'accueil
+            </a>
+        </div>
+
+        <!-- Statistiques -->
+        <div id="statsContainer" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- Les statistiques seront injectées ici -->
+        </div>
+
+        <!-- Actions principales -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Export Complet -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md export-section">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Export Complet</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Toutes les données de la base</p>
+                    </div>
+                </div>
+                <button onclick="exportFullDatabase()" 
+                        class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Télécharger tout (JSON)
+                </button>
+            </div>
+
+            <!-- Export par Table -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md export-section">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-green-100 dark:bg-green-900 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Export par Table</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Sélectionnez les tables à exporter</p>
+                    </div>
+                </div>
+                <button onclick="showTableSelector()" 
+                        class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    Choisir les tables
+                </button>
+            </div>
+        </div>
+
+        <!-- Exports individuels -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                Exports Individuels
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button onclick="exportTable('tickets')" 
+                        class="bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-800 dark:text-purple-200 px-4 py-3 rounded-lg font-medium transition-colors">
+                    📋 Tickets
+                </button>
+                <button onclick="exportTable('users')" 
+                        class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-lg font-medium transition-colors">
+                    👥 Utilisateurs
+                </button>
+                <button onclick="exportTable('messages')" 
+                        class="bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded-lg font-medium transition-colors">
+                    💬 Messages
+                </button>
+                <button onclick="exportTable('savedfields')" 
+                        class="bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg font-medium transition-colors">
+                    💾 Champs mémorisés
+                </button>
+            </div>
+        </div>
+
+        <!-- Zone de statut -->
+        <div id="statusContainer" class="hidden bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            <div class="flex items-center justify-center gap-4">
+                <div class="loading-spinner"></div>
+                <span class="text-gray-700 dark:text-gray-300 font-medium" id="statusText">
+                    Préparation de l'export...
+                </span>
+            </div>
+        </div>
+
+        <!-- Modal de sélection de tables -->
+        <div id="tableSelectorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Sélectionner les tables</h3>
+                    <button onclick="closeTableSelector()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-3 mb-6">
+                    <label class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600">
+                        <input type="checkbox" checked class="table-checkbox" data-table="tickets" class="rounded">
+                        <span class="text-gray-900 dark:text-white font-medium">📋 Tickets</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600">
+                        <input type="checkbox" checked class="table-checkbox" data-table="users" class="rounded">
+                        <span class="text-gray-900 dark:text-white font-medium">👥 Utilisateurs</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600">
+                        <input type="checkbox" checked class="table-checkbox" data-table="messages" class="rounded">
+                        <span class="text-gray-900 dark:text-white font-medium">💬 Messages</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600">
+                        <input type="checkbox" checked class="table-checkbox" data-table="savedfields" class="rounded">
+                        <span class="text-gray-900 dark:text-white font-medium">💾 Champs mémorisés</span>
+                    </label>
+                </div>
+                
+                <button onclick="exportSelectedTables()" 
+                        class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors">
+                    Télécharger la sélection
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-8 pb-8">
+        <div class="container mx-auto px-4 text-center text-gray-600 dark:text-gray-400 text-sm">
+            <p>CallFix Database Export Tool - Version 2.0.7</p>
+            <p class="mt-1">⚠️ Aucune authentification requise - À utiliser avec précaution</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/js/themeManager.js"></script>
+    
+    <script>
+        // Charger les statistiques au démarrage
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/export/stats');
+                if (!response.ok) throw new Error('Erreur lors du chargement des statistiques');
+                
+                const stats = await response.json();
+                displayStats(stats);
+            } catch (error) {
+                console.error('Erreur stats:', error);
+                document.getElementById('statsContainer').innerHTML = `
+                    <div class="col-span-4 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-lg">
+                        ⚠️ Impossible de charger les statistiques
+                    </div>
+                `;
+            }
+        }
+
+        function displayStats(stats) {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">${stats.tickets || 0}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Tickets</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div class="text-3xl font-bold text-green-600 dark:text-green-400">${stats.users || 0}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Utilisateurs</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div class="text-3xl font-bold text-yellow-600 dark:text-yellow-400">${stats.messages || 0}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Messages</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">${stats.savedfields || 0}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Champs mémorisés</div>
+                </div>
+            `;
+        }
+
+        async function exportFullDatabase() {
+            showStatus('Téléchargement de la base complète...');
+            
+            try {
+                const response = await fetch('/api/export/full');
+                if (!response.ok) throw new Error('Erreur lors de l\'export');
+                
+                const data = await response.json();
+                downloadJSON(data, `callfix-full-export-${getTimestamp()}.json`);
+                
+                hideStatus();
+                showNotification('✅ Export complet réussi !', 'success');
+            } catch (error) {
+                hideStatus();
+                showNotification('❌ Erreur lors de l\'export: ' + error.message, 'error');
+            }
+        }
+
+        async function exportTable(table) {
+            showStatus(`Téléchargement de la table ${table}...`);
+            
+            try {
+                const response = await fetch(`/api/export/table/${table}`);
+                if (!response.ok) throw new Error('Erreur lors de l\'export');
+                
+                const data = await response.json();
+                downloadJSON(data, `callfix-${table}-${getTimestamp()}.json`);
+                
+                hideStatus();
+                showNotification(`✅ Export de ${table} réussi !`, 'success');
+            } catch (error) {
+                hideStatus();
+                showNotification('❌ Erreur lors de l\'export: ' + error.message, 'error');
+            }
+        }
+
+        function showTableSelector() {
+            document.getElementById('tableSelectorModal').classList.remove('hidden');
+        }
+
+        function closeTableSelector() {
+            document.getElementById('tableSelectorModal').classList.add('hidden');
+        }
+
+        async function exportSelectedTables() {
+            const checkboxes = document.querySelectorAll('.table-checkbox:checked');
+            const tables = Array.from(checkboxes).map(cb => cb.dataset.table);
+            
+            if (tables.length === 0) {
+                showNotification('⚠️ Sélectionnez au moins une table', 'warning');
+                return;
+            }
+            
+            closeTableSelector();
+            showStatus(`Téléchargement de ${tables.length} table(s)...`);
+            
+            try {
+                const response = await fetch('/api/export/custom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tables })
+                });
+                
+                if (!response.ok) throw new Error('Erreur lors de l\'export');
+                
+                const data = await response.json();
+                downloadJSON(data, `callfix-custom-export-${getTimestamp()}.json`);
+                
+                hideStatus();
+                showNotification(`✅ Export de ${tables.length} table(s) réussi !`, 'success');
+            } catch (error) {
+                hideStatus();
+                showNotification('❌ Erreur lors de l\'export: ' + error.message, 'error');
+            }
+        }
+
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function getTimestamp() {
+            return new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        }
+
+        function showStatus(text) {
+            document.getElementById('statusText').textContent = text;
+            document.getElementById('statusContainer').classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            document.getElementById('statusContainer').classList.add('hidden');
+        }
+
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+            
+            const notif = document.createElement('div');
+            notif.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg z-50 transition-opacity`;
+            notif.textContent = message;
+            
+            document.body.appendChild(notif);
+            
+            setTimeout(() => {
+                notif.style.opacity = '0';
+                setTimeout(() => notif.remove(), 300);
+            }, 3000);
+        }
+
+        // Charger les stats au démarrage
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>

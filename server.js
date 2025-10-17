@@ -1018,6 +1018,173 @@ app.post('/admin/create-ticket', requireLogin, async (req, res) => {
     }
 });
 
+// ============================================
+// ROUTES D'EXPORT - SANS AUTHENTIFICATION
+// ============================================
+
+// Route pour la page d'export
+app.get('/export', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'html', 'export.html'));
+});
+
+// Statistiques pour la page d'export
+app.get('/api/export/stats', async (req, res) => {
+    try {
+        const stats = {
+            tickets: await Ticket.count(),
+            users: await User.count(),
+            messages: await Message.count(),
+            savedfields: await SavedField.count()
+        };
+        res.json(stats);
+    } catch (error) {
+        console.error('Erreur lors du calcul des statistiques:', error);
+        res.status(500).json({ error: 'Erreur lors du calcul des statistiques' });
+    }
+});
+
+// Export complet de toutes les tables
+app.get('/api/export/full', async (req, res) => {
+    try {
+        console.log('🔽 Export complet de la base de données demandé');
+        
+        const [tickets, users, messages, savedFields] = await Promise.all([
+            Ticket.findAll({ include: [Message] }),
+            User.findAll(),
+            Message.findAll(),
+            SavedField.findAll()
+        ]);
+        
+        const exportData = {
+            metadata: {
+                exportDate: new Date().toISOString(),
+                version: '2.0.7',
+                tables: ['tickets', 'users', 'messages', 'savedfields'],
+                counts: {
+                    tickets: tickets.length,
+                    users: users.length,
+                    messages: messages.length,
+                    savedfields: savedFields.length
+                }
+            },
+            data: {
+                tickets,
+                users,
+                messages,
+                savedfields: savedFields
+            }
+        };
+        
+        console.log(`✅ Export complet généré: ${tickets.length} tickets, ${users.length} users, ${messages.length} messages, ${savedFields.length} savedfields`);
+        res.json(exportData);
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'export complet:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'export' });
+    }
+});
+
+// Export d'une table spécifique
+app.get('/api/export/table/:tableName', async (req, res) => {
+    try {
+        const { tableName } = req.params;
+        console.log(`🔽 Export de la table ${tableName} demandé`);
+        
+        let data;
+        let Model;
+        
+        switch (tableName.toLowerCase()) {
+            case 'tickets':
+                Model = Ticket;
+                data = await Ticket.findAll({ include: [Message] });
+                break;
+            case 'users':
+                Model = User;
+                data = await User.findAll();
+                break;
+            case 'messages':
+                Model = Message;
+                data = await Message.findAll();
+                break;
+            case 'savedfields':
+                Model = SavedField;
+                data = await SavedField.findAll();
+                break;
+            default:
+                return res.status(400).json({ error: 'Table invalide' });
+        }
+        
+        const exportData = {
+            metadata: {
+                exportDate: new Date().toISOString(),
+                table: tableName,
+                count: data.length,
+                version: '2.0.7'
+            },
+            data
+        };
+        
+        console.log(`✅ Export de ${tableName} généré: ${data.length} enregistrements`);
+        res.json(exportData);
+    } catch (error) {
+        console.error(`❌ Erreur lors de l'export de ${req.params.tableName}:`, error);
+        res.status(500).json({ error: 'Erreur lors de l\'export' });
+    }
+});
+
+// Export personnalisé avec sélection de tables
+app.post('/api/export/custom', async (req, res) => {
+    try {
+        const { tables } = req.body;
+        
+        if (!Array.isArray(tables) || tables.length === 0) {
+            return res.status(400).json({ error: 'Liste de tables invalide' });
+        }
+        
+        console.log(`🔽 Export personnalisé demandé: ${tables.join(', ')}`);
+        
+        const exportData = {
+            metadata: {
+                exportDate: new Date().toISOString(),
+                version: '2.0.7',
+                tables: tables,
+                counts: {}
+            },
+            data: {}
+        };
+        
+        // Charger chaque table demandée
+        for (const tableName of tables) {
+            let data;
+            
+            switch (tableName.toLowerCase()) {
+                case 'tickets':
+                    data = await Ticket.findAll({ include: [Message] });
+                    break;
+                case 'users':
+                    data = await User.findAll();
+                    break;
+                case 'messages':
+                    data = await Message.findAll();
+                    break;
+                case 'savedfields':
+                    data = await SavedField.findAll();
+                    break;
+                default:
+                    continue; // Ignorer les tables invalides
+            }
+            
+            exportData.data[tableName] = data;
+            exportData.metadata.counts[tableName] = data.length;
+        }
+        
+        console.log(`✅ Export personnalisé généré pour ${tables.length} table(s)`);
+        res.json(exportData);
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'export personnalisé:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'export' });
+    }
+});
+
 // Démarrage du serveur
 async function startServer() {
     try {
