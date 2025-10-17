@@ -35,10 +35,11 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
             scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
+            scriptSrcAttr: ["'unsafe-inline'"],  // ✅ Autorise onclick, onchange, etc.
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'", "cdn.jsdelivr.net"],  // ✅ Autorise CDN pour sourcemaps
+            connectSrc: ["'self'", "cdn.jsdelivr.net"],
             formAction: ["'self'"],
-            fontSrc: ["'self'", "data:", "cdn.jsdelivr.net", "https://r2cdn.perplexity.ai"],  // ✅ Autorise fonts externes
+            fontSrc: ["'self'", "data:", "cdn.jsdelivr.net", "https://r2cdn.perplexity.ai"],
             objectSrc: ["'none'"],
             upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
         }
@@ -1048,8 +1049,10 @@ app.get('/api/export/full', async (req, res) => {
     try {
         console.log('🔽 Export complet de la base de données demandé');
         
+        // ✅ Export tickets SANS messages (pour alléger)
+        // Si besoin des messages, ils sont dans la table messages séparée
         const [tickets, users, messages, savedFields] = await Promise.all([
-            Ticket.findAll({ include: [Message] }),
+            Ticket.findAll({ order: [['createdAt', 'DESC']] }),
             User.findAll(),
             Message.findAll(),
             SavedField.findAll()
@@ -1090,23 +1093,22 @@ app.get('/api/export/table/:tableName', async (req, res) => {
         console.log(`🔽 Export de la table ${tableName} demandé`);
         
         let data;
-        let Model;
         
         switch (tableName.toLowerCase()) {
             case 'tickets':
-                Model = Ticket;
-                data = await Ticket.findAll({ include: [Message] });
+                // ✅ Export tickets SANS les messages inclus
+                data = await Ticket.findAll({
+                    attributes: { exclude: [] }, // Tous les champs du ticket
+                    order: [['createdAt', 'DESC']]
+                });
                 break;
             case 'users':
-                Model = User;
                 data = await User.findAll();
                 break;
             case 'messages':
-                Model = Message;
                 data = await Message.findAll();
                 break;
             case 'savedfields':
-                Model = SavedField;
                 data = await SavedField.findAll();
                 break;
             default:
@@ -1158,7 +1160,10 @@ app.post('/api/export/custom', async (req, res) => {
             
             switch (tableName.toLowerCase()) {
                 case 'tickets':
-                    data = await Ticket.findAll({ include: [Message] });
+                    // ✅ Export tickets SANS messages
+                    data = await Ticket.findAll({
+                        order: [['createdAt', 'DESC']]
+                    });
                     break;
                 case 'users':
                     data = await User.findAll();
